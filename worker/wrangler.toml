@@ -11,7 +11,7 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "uptime-db"
-database_id = "dcf229c0-f9ce-4678-9104-72675f173636"
+database_id = "f3b490ec-6eaf-4ad5-a09f-d1a47395dd9d"
 
 # 配置环境变量
 [var]

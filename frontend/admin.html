@@ -1,25 +1,35 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Uptime Monitor</title>
     <!-- Favicon: 盾牌 SVG -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         /* 磨砂玻璃效果 */
         .glass {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         .dark .glass {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -29,6 +39,7 @@
         .input-transition {
             transition: all 0.2s ease-in-out;
         }
+
         .input-transition:focus {
             transform: translateY(-1px);
             box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 0 2px 4px -1px rgba(59, 130, 246, 0.06);
@@ -39,29 +50,69 @@
             width: 6px;
             height: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 3px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* Dark mode (media query support for raw css is tricky without class, but we can use specific selectors if dark class is present on html/body) */
+
         @media (prefers-color-scheme: dark) {
             ::-webkit-scrollbar-thumb {
                 background: #334155;
             }
+
             ::-webkit-scrollbar-thumb:hover {
                 background: #475569;
             }
         }
+
+        /* Toast 动画 */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .toast-leave {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+
+        /* 折线图 SVG */
+        .sparkline-container svg {
+            display: block;
+        }
     </style>
     <script>
         tailwind.config = {
-            darkMode: 'media', // 跟随系统，也可以改为 'class' 手动切换
+            darkMode: 'media',
             theme: {
                 extend: {
                     colors: {
@@ -74,34 +125,44 @@
         }
     </script>
 </head>
-<body class="bg-gray-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 min-h-screen transition-colors duration-300">
+
+<body
+    class="bg-gray-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 min-h-screen transition-colors duration-300">
     <div id="app" class="min-h-screen flex flex-col">
-        
+
         <!-- 登录弹窗 (全屏覆盖) -->
-        <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-            <div v-if="!isAuthenticated" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
+        <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+            <div v-if="!isAuthenticated"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                <div
+                    class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
                     <div class="p-8 text-center">
-                        <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <div
+                            class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                             <i class="fas fa-lock text-2xl text-blue-600 dark:text-blue-400"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Access</h2>
                         <p class="text-gray-500 dark:text-slate-400 mb-8 text-sm">请输入管理员密码以访问控制台</p>
-                        
+
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-key text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                                <i
+                                    class="fas fa-key text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
                             </div>
-                            <input type="password" v-model="inputPassword" @keyup.enter="login" 
-                                class="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-slate-600 rounded-xl leading-5 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-200 shadow-sm hover:bg-white dark:hover:bg-slate-800" 
+                            <input type="password" v-model="inputPassword" @keyup.enter="login"
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-slate-600 rounded-xl leading-5 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-200 shadow-sm hover:bg-white dark:hover:bg-slate-800"
                                 placeholder="Enter your password" autocomplete="current-password">
                         </div>
 
-                        <button @click="login" class="mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0">
+                        <button @click="login"
+                            class="mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0">
                             进入系统
                         </button>
                     </div>
-                    <div class="bg-gray-50 dark:bg-slate-900/50 px-8 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center text-xs text-gray-400">
+                    <div
+                        class="bg-gray-50 dark:bg-slate-900/50 px-8 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center text-xs text-gray-400">
                         <span><i class="fas fa-shield-alt mr-1"></i> Secure Area</span>
                         <a href="/" class="hover:text-blue-600 transition-colors">返回首页</a>
                     </div>
@@ -110,7 +171,8 @@
         </transition>
 
         <!-- 顶部导航 -->
-        <header class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40 shadow-sm backdrop-blur-md bg-opacity-80 dark:bg-opacity-80">
+        <header
+            class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40 shadow-sm backdrop-blur-md bg-opacity-80 dark:bg-opacity-80">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
@@ -118,18 +180,24 @@
                             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
                                 <i class="fas fa-bolt"></i>
                             </div>
-                            <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Uptime<span class="text-blue-600">.Admin</span></span>
+                            <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Uptime<span
+                                    class="text-blue-600">.Admin</span></span>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <a href="/" class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors" title="查看状态页">
+                        <a href="/"
+                            class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+                            title="查看状态页">
                             <i class="fas fa-external-link-alt"></i>
                         </a>
-                        <button @click="fetchMonitors" class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors" :class="{ 'animate-spin': loading }" title="刷新数据">
+                        <button @click="fetchMonitors"
+                            class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+                            :class="{ 'animate-spin': loading }" title="刷新数据">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                         <div class="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-1"></div>
-                        <button @click="logout" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors">
+                        <button @click="logout"
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors">
                             <i class="fas fa-sign-out-alt"></i>
                             <span class="hidden sm:inline">退出</span>
                         </button>
@@ -140,40 +208,109 @@
 
         <!-- 主要内容 -->
         <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
+
+            <!-- API 错误提示 (Item 9) -->
+            <div v-if="error"
+                class="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-500/30 rounded-xl p-4 flex items-center gap-3">
+                <i class="fas fa-exclamation-circle text-orange-500 text-lg flex-shrink-0"></i>
+                <p class="text-sm text-orange-700 dark:text-orange-400 flex-1">{{ error }}</p>
+                <button @click="fetchMonitors"
+                    class="text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 transition font-medium">重试</button>
+            </div>
+
+            <!-- 统计概览卡片 (Item 5) -->
+            <div v-if="isAuthenticated && monitors.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">总计</span>
+                        <div class="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-server text-slate-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total }}</p>
+                    <p class="text-xs text-gray-400 mt-1">监控项目</p>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-green-500">在线</span>
+                        <div
+                            class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-check text-green-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ stats.online }}</p>
+                    <p class="text-xs text-gray-400 mt-1">运行正常</p>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-red-500">故障</span>
+                        <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-times text-red-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-red-600 dark:text-red-400">{{ stats.offline }}</p>
+                    <p class="text-xs text-gray-400 mt-1">需要关注</p>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">暂停</span>
+                        <div class="w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-pause text-gray-400 text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-500 dark:text-slate-400">{{ stats.paused }}</p>
+                    <p class="text-xs text-gray-400 mt-1">已暂停</p>
+                </div>
+            </div>
+
             <!-- 添加监控卡片 -->
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 mb-8 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+            <div
+                class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 mb-8 overflow-hidden">
+                <div
+                    class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                         <i class="fas fa-plus-circle text-blue-500"></i> 添加新监控
                     </h3>
-                    <span class="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">HTTPS / HTTP</span>
+                    <span class="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">HTTPS
+                        / HTTP</span>
                 </div>
                 <div class="p-6">
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                         <div class="md:col-span-4">
                             <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">网站名称</label>
-                            <input v-model="newMonitor.name" placeholder="例如: Google Search" class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none">
+                            <input v-model="newMonitor.name" placeholder="例如: Google Search"
+                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none">
                         </div>
                         <div class="md:col-span-8">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">URL 地址</label>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">URL
+                                地址</label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
                                     <i class="fas fa-link text-xs"></i>
                                 </span>
-                                <input v-model="newMonitor.url" placeholder="https://example.com" class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg pl-9 pr-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none font-mono text-sm">
+                                <input v-model="newMonitor.url" placeholder="https://example.com"
+                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg pl-9 pr-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none font-mono text-sm">
                             </div>
                         </div>
                         <div class="md:col-span-4">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">关键词验证 (可选)</label>
-                            <input v-model="newMonitor.keyword" placeholder="页面必须包含的内容" class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none">
+                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">关键词验证
+                                (可选)</label>
+                            <input v-model="newMonitor.keyword" placeholder="页面必须包含的内容"
+                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none">
                         </div>
                         <div class="md:col-span-5">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">User-Agent (可选)</label>
-                            <input v-model="newMonitor.user_agent" placeholder="默认: Uptime-Monitor/1.0" class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none font-mono text-xs">
+                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">User-Agent
+                                (可选)</label>
+                            <input v-model="newMonitor.user_agent" placeholder="默认: Uptime-Monitor/1.0"
+                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none font-mono text-xs">
                         </div>
                         <div class="md:col-span-3 flex items-end">
-                            <button @click="addMonitor" :disabled="submitting" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                            <button @click="addMonitor" :disabled="submitting"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                                 <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
                                 <i v-else class="fas fa-paper-plane"></i>
                                 {{ submitting ? '添加中...' : '开始监控' }}
@@ -184,8 +321,10 @@
             </div>
 
             <!-- 监控列表 -->
-            <div v-if="monitors.length === 0" class="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-                <div class="w-20 h-20 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div v-if="monitors.length === 0 && !loading"
+                class="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                <div
+                    class="w-20 h-20 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-server text-3xl text-gray-300 dark:text-slate-500"></i>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">暂无监控项目</h3>
@@ -193,22 +332,40 @@
             </div>
 
             <div v-else class="grid gap-4">
-                <div v-for="m in monitors" :key="m.id" class="group bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm hover:shadow-md border border-gray-100 dark:border-slate-700 transition-all duration-200 flex flex-col md:flex-row items-center justify-between gap-6">
-                    
+                <div v-for="m in monitors" :key="m.id"
+                    class="group bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm hover:shadow-md border border-gray-100 dark:border-slate-700 transition-all duration-200 flex flex-col md:flex-row items-center justify-between gap-6"
+                    :class="m.paused ? 'opacity-60' : ''">
+
                     <!-- 左侧信息 -->
                     <div class="flex items-start gap-4 w-full md:w-auto">
                         <div class="flex-shrink-0 mt-1">
                             <span class="relative flex h-3 w-3">
-                              <span v-if="m.status === 'UP'" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span class="relative inline-flex rounded-full h-3 w-3" :class="m.status === 'UP' ? 'bg-green-500' : 'bg-red-500'"></span>
+                                <span v-if="m.status === 'UP'"
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span v-if="m.status === 'RETRYING'"
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3" :class="{
+                                    'bg-green-500': m.status === 'UP',
+                                    'bg-red-500': m.status === 'DOWN',
+                                    'bg-yellow-400': m.status === 'RETRYING',
+                                    'bg-gray-400': m.status === 'PAUSED'
+                                }">
+                                </span>
                             </span>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white truncate">{{ m.name }}</h3>
-                                <span v-if="m.status !== 'UP'" class="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse">DOWN</span>
+                                <span v-if="m.status === 'DOWN'"
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse">DOWN</span>
+                                <span v-if="m.status === 'RETRYING'"
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">重试中</span>
+                                <!-- Item 6: PAUSED 标签 -->
+                                <span v-if="m.paused"
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">已暂停</span>
                             </div>
-                            <a :href="m.url" target="_blank" class="text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-mono flex items-center gap-1 truncate">
+                            <a :href="m.url" target="_blank"
+                                class="text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-mono flex items-center gap-1 truncate max-w-sm">
                                 {{ m.url }} <i class="fas fa-external-link-alt text-[10px] opacity-50"></i>
                             </a>
                             <div v-if="m.keyword" class="mt-1 text-xs text-gray-400 flex items-center gap-1">
@@ -218,13 +375,17 @@
                     </div>
 
                     <!-- 右侧状态与操作 -->
-                    <div class="flex flex-col md:flex-row items-center gap-4 md:gap-8 w-full md:w-auto border-t md:border-t-0 border-gray-100 dark:border-slate-700 pt-4 md:pt-0">
-                        
+                    <div
+                        class="flex flex-col md:flex-row items-center gap-4 md:gap-8 w-full md:w-auto border-t md:border-t-0 border-gray-100 dark:border-slate-700 pt-4 md:pt-0">
+
                         <!-- 指标数据 -->
-                        <div class="grid grid-cols-3 md:flex md:items-center gap-4 md:gap-6 text-center md:text-right w-full md:w-auto">
+                        <div
+                            class="grid grid-cols-3 md:flex md:items-center gap-4 md:gap-6 text-center md:text-right w-full md:w-auto">
                             <div class="flex flex-col">
-                                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Last Check</span>
-                                <span class="text-xs font-mono text-gray-600 dark:text-slate-300">{{ formatDate(m.last_check) }}</span>
+                                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Last
+                                    Check</span>
+                                <span class="text-xs font-mono text-gray-600 dark:text-slate-300">{{
+                                    formatDate(m.last_check) }}</span>
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">SSL</span>
@@ -242,10 +403,21 @@
 
                         <!-- 操作按钮 -->
                         <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                            <button @click="viewLogs(m)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="日志">
+                            <!-- Item 6: 暂停/启用切换按钮 -->
+                            <button @click="togglePause(m)" class="p-2 rounded-lg transition-colors" :class="m.paused
+                                ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'"
+                                :title="m.paused ? '恢复监控' : '暂停监控'">
+                                <i :class="m.paused ? 'fas fa-play' : 'fas fa-pause'"></i>
+                            </button>
+                            <button @click="viewLogs(m)"
+                                class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="查看日志">
                                 <i class="fas fa-list-ul"></i>
                             </button>
-                            <button @click="deleteMonitor(m.id)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="删除">
+                            <button @click="deleteMonitor(m)"
+                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="删除">
                                 <i class="far fa-trash-alt"></i>
                             </button>
                         </div>
@@ -255,72 +427,196 @@
         </main>
 
         <!-- 底部版权 -->
-        <footer class="mt-auto py-6 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 backdrop-blur-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <footer
+            class="mt-auto py-6 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 backdrop-blur-sm">
+            <div
+                class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-xs text-gray-400 dark:text-slate-500">
-                    &copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">念舒</a>. All Rights Reserved.
+                    &copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank"
+                        class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">念舒</a>. All
+                    Rights Reserved.
                 </p>
                 <div class="flex items-center gap-4 text-xs text-gray-400 dark:text-slate-600 font-mono">
-                    <span><i class="fas fa-code-branch mr-1"></i>v1.2.0</span>
+                    <span><i class="fas fa-code-branch mr-1"></i>v1.3.0</span>
                     <span><i class="fas fa-server mr-1"></i>Cloudflare Edge</span>
                 </div>
             </div>
         </footer>
 
         <!-- 日志模态框 (侧边抽屉式) -->
-        <transition enter-active-class="transition transform duration-300 ease-in-out" enter-from-class="translate-x-full" enter-to-class="translate-x-0" leave-active-class="transition transform duration-300 ease-in-out" leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-            <div v-if="showLogs" class="fixed inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-slate-800 shadow-2xl z-50 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-900">
+        <transition enter-active-class="transition transform duration-300 ease-in-out"
+            enter-from-class="translate-x-full" enter-to-class="translate-x-0"
+            leave-active-class="transition transform duration-300 ease-in-out" leave-from-class="translate-x-0"
+            leave-to-class="translate-x-full">
+            <div v-if="showLogs"
+                class="fixed inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-slate-800 shadow-2xl z-50 border-l border-gray-200 dark:border-slate-700 flex flex-col">
+
+                <!-- 抽屉头部 -->
+                <div
+                    class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-900">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ currentMonitor?.name }}</h3>
                         <p class="text-xs text-gray-500 font-mono mt-1">检测日志流水</p>
                     </div>
-                    <button @click="showLogs = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition">
+                    <button @click="showLogs = false"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
+
+                <!-- Item 11: Uptime 可用率统计 -->
+                <div v-if="uptimeStats && (uptimeStats.h24 !== null || uptimeStats.d7 !== null)"
+                    class="px-6 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/30">
+                    <div class="flex items-center gap-6 text-xs">
+                        <div v-for="stat in [
+                        {label:'24 小时', val: uptimeStats.h24},
+                        {label:'7 天', val: uptimeStats.d7},
+                        {label:'30 天', val: uptimeStats.d30}
+                    ]" :key="stat.label">
+                            <span class="text-gray-400 font-medium">{{ stat.label }} 可用率</span>
+                            <span class="font-mono font-bold ml-1.5"
+                                :class="stat.val === null ? 'text-gray-400' : Number(stat.val) >= 99 ? 'text-green-500' : Number(stat.val) >= 95 ? 'text-yellow-500' : 'text-red-500'">
+                                {{ stat.val !== null ? stat.val + '%' : 'N/A' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items 7/12: 响应延迟趋势 SVG 折线图 -->
+                <div v-if="logs.length > 1 && sparkline"
+                    class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 sparkline-container bg-gray-50/30 dark:bg-slate-900/20">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">响应延迟趋势</span>
+                        <span class="text-xs text-gray-400 font-mono">Max: {{ sparkline.maxL }}ms</span>
+                    </div>
+                    <svg :viewBox="`0 0 ${sparkline.W} ${sparkline.H}`" class="w-full h-14" preserveAspectRatio="none">
+                        <!-- 折线（仅成功点连线）-->
+                        <path :d="sparkline.path" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round"
+                            stroke-linecap="round" />
+                        <!-- 数据点 -->
+                        <circle v-for="(p, i) in sparkline.points" :key="i" :cx="p.x" :cy="p.y" r="3"
+                            :fill="p.fail ? '#ef4444' : '#22c55e'" :opacity="p.fail ? 1 : 0.8" />
+                        <!-- 失败点十字标记 -->
+                        <g v-for="(p, i) in sparkline.points.filter(pt => pt.fail)" :key="'x' + i">
+                            <line :x1="p.x - 4" :y1="p.y - 4" :x2="p.x + 4" :y2="p.y + 4" stroke="#ef4444"
+                                stroke-width="1.5" />
+                            <line :x1="p.x + 4" :y1="p.y - 4" :x2="p.x - 4" :y2="p.y + 4" stroke="#ef4444"
+                                stroke-width="1.5" />
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- 日志表格 -->
                 <div class="flex-1 overflow-y-auto p-0">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-gray-50 dark:bg-slate-900/50 sticky top-0 z-10">
                             <tr>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">Time</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">Status</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">Latency</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">Result</th>
+                                <th
+                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
+                                    Time</th>
+                                <th
+                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
+                                    Status</th>
+                                <th
+                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
+                                    Latency</th>
+                                <th
+                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
+                                    Result</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-                            <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition">
-                                <td class="px-6 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
+                            <tr v-for="log in logs" :key="log.id"
+                                class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition">
+                                <td class="px-6 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{{
+                                    formatDate(log.created_at) }}</td>
                                 <td class="px-6 py-3 text-xs font-mono">
-                                    <span :class="log.status_code >= 200 && log.status_code < 300 ? 'text-green-600' : 'text-red-600'">{{ log.status_code || '-' }}</span>
+                                    <span
+                                        :class="log.status_code >= 200 && log.status_code < 300 ? 'text-green-600' : 'text-red-600'">{{
+                                        log.status_code || '-' }}</span>
                                 </td>
-                                <td class="px-6 py-3 text-xs font-mono text-gray-500 dark:text-slate-400">{{ log.latency }}ms</td>
+                                <td class="px-6 py-3 text-xs font-mono text-gray-500 dark:text-slate-400">{{ log.latency
+                                    }}ms</td>
                                 <td class="px-6 py-3 text-xs">
-                                    <span v-if="log.is_fail" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                    <span v-if="log.is_fail"
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
                                         {{ log.reason || 'Failed' }}
                                     </span>
-                                    <span v-else class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                    <span v-else
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                                         Normal
                                     </span>
                                 </td>
                             </tr>
-                            <tr v-if="logs.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-400 dark:text-slate-500">暂无日志记录</td>
+                            <tr v-if="logs.length === 0 && !logsLoading">
+                                <td colspan="4" class="px-6 py-12 text-center text-gray-400 dark:text-slate-500">暂无日志记录
+                                </td>
+                            </tr>
+                            <tr v-if="logsLoading">
+                                <td colspan="4" class="px-6 py-12 text-center">
+                                    <i class="fas fa-circle-notch fa-spin text-blue-500 text-xl"></i>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </transition>
-        <!-- 遮罩层 (点击关闭日志) -->
-        <div v-if="showLogs" @click="showLogs = false" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"></div>
+        <!-- 遮罩层 -->
+        <div v-if="showLogs" @click="showLogs = false"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"></div>
+
+        <!-- Item 8: 自定义确认 Modal -->
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0"
+            enter-to-class="opacity-100">
+            <div v-if="confirmModal.show"
+                class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div
+                    class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+                    <div class="p-6">
+                        <div
+                            class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">确认操作</h3>
+                        <p class="text-gray-500 dark:text-slate-400 text-sm text-center">{{ confirmModal.message }}</p>
+                    </div>
+                    <div class="px-6 pb-6 flex gap-3">
+                        <button @click="handleConfirm(false)"
+                            class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition font-medium text-sm">
+                            取消
+                        </button>
+                        <button @click="handleConfirm(true)"
+                            class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-sm transition shadow-sm">
+                            确认删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- Item 8: Toast 通知容器 -->
+        <div class="fixed bottom-6 right-6 z-[70] flex flex-col gap-2 pointer-events-none">
+            <div v-for="toast in toasts" :key="toast.id"
+                class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium max-w-xs transition-all toast-enter"
+                :class="{
+                'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/40 dark:border-green-500/40 dark:text-green-300': toast.type === 'success',
+                'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/40 dark:border-red-500/40 dark:text-red-300': toast.type === 'error',
+                'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/40 dark:border-blue-500/40 dark:text-blue-300': toast.type === 'info',
+            }">
+                <i :class="{
+                'fas fa-check-circle': toast.type === 'success',
+                'fas fa-times-circle': toast.type === 'error',
+                'fas fa-info-circle': toast.type === 'info'
+            }"></i>
+                <span>{{ toast.message }}</span>
+            </div>
+        </div>
 
     </div>
 
     <script>
-        // 你的 Worker 地址
-        const API_BASE = 'https://uptime-api.nianshu2022.cn';
+        const API_BASE = 'https://nianshu.qzz.io';
 
         const { createApp, ref, onMounted, computed } = Vue;
 
@@ -329,18 +625,94 @@
                 const monitors = ref([]);
                 const logs = ref([]);
                 const showLogs = ref(false);
+                const logsLoading = ref(false);
                 const currentMonitor = ref(null);
                 const newMonitor = ref({ name: '', url: '', keyword: '', user_agent: '' });
                 const loading = ref(false);
                 const submitting = ref(false);
-                
+                const error = ref(null);
+
+                // ── 认证 ──────────────────────────────────────────
                 const inputPassword = ref('');
                 const storedPassword = ref(sessionStorage.getItem('uptime_admin_password'));
-                const isAuthenticated = computed(() => {
-                    return storedPassword.value && storedPassword.value.length > 0;
+                const isAuthenticated = computed(() => !!storedPassword.value && storedPassword.value.length > 0);
+
+                // ── Item 8: Toast 系统 ────────────────────────────
+                const toasts = ref([]);
+                let toastId = 0;
+                const addToast = (message, type = 'info') => {
+                    const id = ++toastId;
+                    toasts.value.push({ id, message, type });
+                    setTimeout(() => {
+                        toasts.value = toasts.value.filter(t => t.id !== id);
+                    }, 3500);
+                };
+
+                // ── Item 8: 自定义 Modal ──────────────────────────
+                const confirmModal = ref({ show: false, message: '', resolve: null });
+                const showConfirm = (message) => new Promise(resolve => {
+                    confirmModal.value = { show: true, message, resolve };
+                });
+                const handleConfirm = (result) => {
+                    if (confirmModal.value.resolve) confirmModal.value.resolve(result);
+                    confirmModal.value.show = false;
+                };
+
+                // ── Item 5: 统计概览 ──────────────────────────────
+                const stats = computed(() => ({
+                    total: monitors.value.length,
+                    online: monitors.value.filter(m => m.status === 'UP').length,
+                    offline: monitors.value.filter(m => m.status === 'DOWN' || m.status === 'RETRYING').length,
+                    paused: monitors.value.filter(m => m.paused === 1).length,
+                }));
+
+                // ── Items 7/12: SVG 折线图计算 ────────────────────
+                const sparkline = computed(() => {
+                    if (!logs.value || logs.value.length < 2) return null;
+                    const ordered = [...logs.value].reverse(); // 时间正序
+                    const W = 560, H = 56, P = 6;
+
+                    const latencies = ordered.map(l => l.latency || 0);
+                    const maxL = Math.max(...latencies, 1);
+
+                    const points = ordered.map((log, i) => ({
+                        x: P + (i / Math.max(ordered.length - 1, 1)) * (W - P * 2),
+                        y: H - P - ((log.latency || 0) / maxL) * (H - P * 2),
+                        fail: !!log.is_fail,
+                    }));
+
+                    // 构建路径，在失败点处断开
+                    let path = '';
+                    let penDown = false;
+                    points.forEach(p => {
+                        if (!p.fail) {
+                            path += penDown ? ` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}` : `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+                            penDown = true;
+                        } else {
+                            penDown = false;
+                        }
+                    });
+
+                    return { points, path, maxL, W, H };
                 });
 
-                // 封装带 Auth 的 fetch
+                // ── Item 11: Uptime 可用率 ────────────────────────
+                const uptimeStats = computed(() => {
+                    if (!logs.value || logs.value.length === 0) return null;
+                    const calcUptime = (hours) => {
+                        const cutoff = Date.now() - hours * 3600000;
+                        const filtered = logs.value.filter(l => {
+                            const t = new Date(l.created_at).getTime();
+                            return !isNaN(t) && t >= cutoff;
+                        });
+                        if (filtered.length === 0) return null;
+                        const ok = filtered.filter(l => !l.is_fail).length;
+                        return ((ok / filtered.length) * 100).toFixed(1);
+                    };
+                    return { h24: calcUptime(24), d7: calcUptime(24 * 7), d30: calcUptime(24 * 30) };
+                });
+
+                // ── 带鉴权的 fetch ────────────────────────────────
                 const authFetch = async (url, options = {}) => {
                     const headers = {
                         ...options.headers,
@@ -348,7 +720,6 @@
                     };
                     const res = await fetch(url, { ...options, headers });
                     if (res.status === 401) {
-                        console.log('401 received, clearing password');
                         storedPassword.value = '';
                         sessionStorage.removeItem('uptime_admin_password');
                         location.reload();
@@ -356,36 +727,44 @@
                     return res;
                 };
 
+                // ── 认证操作 ──────────────────────────────────────
                 const login = () => {
                     if (!inputPassword.value) return;
                     storedPassword.value = inputPassword.value;
                     sessionStorage.setItem('uptime_admin_password', inputPassword.value);
                     fetchMonitors();
                 };
-
                 const logout = () => {
-                    // 先跳转，利用浏览器的行为来销毁页面
                     sessionStorage.removeItem('uptime_admin_password');
                     window.location.href = '/';
                 };
 
+                // ── 数据获取 ──────────────────────────────────────
                 const fetchMonitors = async () => {
                     if (!isAuthenticated.value) return;
                     loading.value = true;
+                    error.value = null;
                     try {
                         const res = await authFetch(`${API_BASE}/monitors`);
                         if (res && res.ok) {
                             monitors.value = await res.json();
+                        } else {
+                            error.value = `数据加载失败 (${res?.status || '网络错误'})，请刷新重试。`;
                         }
                     } catch (e) {
+                        error.value = '无法连接到服务器，请检查网络连接。';
                         console.error('Fetch error:', e);
                     } finally {
                         loading.value = false;
                     }
                 };
 
+                // ── 添加监控 ──────────────────────────────────────
                 const addMonitor = async () => {
-                    if (!newMonitor.value.name || !newMonitor.value.url) return;
+                    if (!newMonitor.value.name || !newMonitor.value.url) {
+                        addToast('请填写名称和 URL', 'error');
+                        return;
+                    }
                     submitting.value = true;
                     try {
                         const res = await authFetch(`${API_BASE}/monitors`, {
@@ -395,36 +774,58 @@
                         });
                         if (res.ok) {
                             newMonitor.value = { name: '', url: '', keyword: '', user_agent: '' };
+                            addToast('监控添加成功，正在获取证书信息…', 'success');
                             fetchMonitors();
                         } else {
                             const data = await res.json();
-                            alert(data.error || '添加失败，请检查输入');
+                            addToast(data.error || '添加失败，请检查输入', 'error');
                         }
                     } catch (e) {
-                        alert('网络错误');
+                        addToast('网络错误，请稍后重试', 'error');
                     } finally {
                         submitting.value = false;
                     }
                 };
 
-                const deleteMonitor = async (id) => {
-                    if (!confirm('确定要删除这个监控项吗？历史日志也会被删除。')) return;
+                // ── 删除监控（使用自定义 Modal）────────────────────
+                const deleteMonitor = async (m) => {
+                    const ok = await showConfirm(`确定要删除「${m.name}」吗？历史日志也会被清除，此操作不可撤销。`);
+                    if (!ok) return;
                     try {
-                        const res = await authFetch(`${API_BASE}/monitors/${id}`, { method: 'DELETE' });
+                        const res = await authFetch(`${API_BASE}/monitors/${m.id}`, { method: 'DELETE' });
                         if (res.ok) {
+                            addToast(`已删除监控：${m.name}`, 'success');
                             fetchMonitors();
                         } else {
                             const data = await res.json();
-                            alert(data.error || '删除失败');
+                            addToast(data.error || '删除失败', 'error');
                         }
                     } catch (e) {
-                        alert('网络错误');
+                        addToast('网络错误，请稍后重试', 'error');
                     }
                 };
 
+                // ── Item 6: 暂停/恢复切换 ────────────────────────
+                const togglePause = async (m) => {
+                    try {
+                        const res = await authFetch(`${API_BASE}/monitors/${m.id}/pause`, { method: 'PATCH' });
+                        if (res.ok) {
+                            const data = await res.json();
+                            addToast(data.paused ? `已暂停监控：${m.name}` : `已恢复监控：${m.name}`, 'info');
+                            fetchMonitors();
+                        } else {
+                            addToast('操作失败，请稍后重试', 'error');
+                        }
+                    } catch (e) {
+                        addToast('网络错误', 'error');
+                    }
+                };
+
+                // ── 查看日志 ──────────────────────────────────────
                 const viewLogs = async (monitor) => {
                     currentMonitor.value = monitor;
                     logs.value = [];
+                    logsLoading.value = true;
                     showLogs.value = true;
                     try {
                         const res = await authFetch(`${API_BASE}/monitors/${monitor.id}/logs`);
@@ -433,9 +834,12 @@
                         }
                     } catch (e) {
                         console.error(e);
+                    } finally {
+                        logsLoading.value = false;
                     }
                 };
 
+                // ── 日期格式化 ────────────────────────────────────
                 const formatDate = (str) => {
                     if (!str) return '-';
                     let dateStr = str;
@@ -444,11 +848,10 @@
                     } else if (typeof str === 'string' && !str.includes('Z') && !str.includes('+')) {
                         dateStr = str + 'Z';
                     }
-                    
                     const date = new Date(dateStr);
                     return date.toLocaleString('zh-CN', {
                         timeZone: 'Asia/Shanghai',
-                        month: '2-digit', day: '2-digit', 
+                        month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit',
                         hour12: false
                     });
@@ -461,7 +864,7 @@
                 };
 
                 const getExpiryClass = (dateStr) => {
-                    if (!dateStr) return 'text-green-600 dark:text-green-400'; // OK
+                    if (!dateStr) return 'text-green-600 dark:text-green-400';
                     const days = getDaysRemaining(dateStr);
                     if (days < 7) return 'text-red-600 dark:text-red-400 font-bold';
                     if (days < 30) return 'text-yellow-600 dark:text-yellow-400';
@@ -469,23 +872,26 @@
                 };
 
                 onMounted(() => {
-                    if (isAuthenticated.value) {
-                        fetchMonitors();
-                    }
+                    if (isAuthenticated.value) fetchMonitors();
                 });
 
-                return { 
-                    monitors, newMonitor, logs, showLogs, currentMonitor, 
-                    loading, submitting, inputPassword, isAuthenticated,
+                return {
+                    monitors, newMonitor, logs, showLogs, logsLoading, currentMonitor,
+                    loading, submitting, inputPassword, isAuthenticated, error,
+                    toasts, confirmModal,
+                    stats, sparkline, uptimeStats,
                     login, logout,
-                    addMonitor, deleteMonitor, viewLogs, fetchMonitors, 
-                    formatDate, getDaysRemaining, getExpiryClass 
+                    addMonitor, deleteMonitor, viewLogs, fetchMonitors,
+                    togglePause, handleConfirm,
+                    formatDate, getDaysRemaining, getExpiryClass,
                 };
             }
         }).mount('#app');
     </script>
     <!-- Cloudflare Web Analytics -->
-    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "38d73bd4174846ca8b9371fb6dabc46b"}'></script>
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
+        data-cf-beacon='{"token": "38d73bd4174846ca8b9371fb6dabc46b"}'></script>
     <!-- End Cloudflare Web Analytics -->
 </body>
+
 </html>

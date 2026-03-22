@@ -1,71 +1,116 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
+// ============================================================
+// 类型定义 (Item 15: 消除 any，完善 TypeScript 类型)
+// ============================================================
+
+interface Monitor {
+  id: number;
+  name: string;
+  url: string;
+  method: string;
+  interval: number;
+  status: 'UP' | 'DOWN' | 'RETRYING' | 'PAUSED';
+  retry_count: number;
+  last_check: string | null;
+  keyword: string | null;
+  user_agent: string | null;
+  domain_expiry: string | null;
+  cert_expiry: string | null;
+  check_info_status: string | null; // 记录上次更新证书信息的时间戳
+  paused: number; // 0 = 正常, 1 = 已暂停
+  created_at: string;
+}
+
+interface Log {
+  id: number;
+  monitor_id: number;
+  status_code: number;
+  latency: number;
+  is_fail: number; // 0 = 成功, 1 = 失败
+  reason: string | null;
+  created_at: string;
+}
+
+interface DingTalkResult {
+  errcode: number;
+  errmsg: string;
+}
+
 type Bindings = {
   DB: D1Database;
   DINGTALK_ACCESS_TOKEN: string;
   DINGTALK_SECRET: string;
-  ADMIN_PASSWORD?: string; // 可选，如果未设置则不鉴权（不推荐）
+  ADMIN_PASSWORD?: string;
 };
+
+// ============================================================
+// Hono 应用初始化
+// ============================================================
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('/*', cors());
 
-// === 鉴权中间件 ===
+// ============================================================
+// 鉴权中间件 (Item 2: 精确匹配，修复 includes 漏洞)
+// ============================================================
+
 app.use('/monitors/*', async (c, next) => {
-  // 允许跨域预检请求直接通过
   if (c.req.method === 'OPTIONS') return await next();
-  
-  // 如果是公开接口，直接放行
-  if (c.req.path.startsWith('/monitors/public')) {
+  if (c.req.path.startsWith('/monitors/public')) return await next();
+
+  const adminPassword = c.env.ADMIN_PASSWORD;
+  // 未配置密码时直接记录警告（生产环境不推荐）
+  if (!adminPassword) {
+    console.warn('ADMIN_PASSWORD is not set. All admin routes are unprotected!');
     return await next();
   }
 
-  const adminPassword = c.env.ADMIN_PASSWORD;
-  // 如果没有设置环境变量，默认放行
-  if (!adminPassword) return await next();
-
   const authHeader = c.req.header('Authorization');
-  // 支持 "Bearer PASSWORD" 格式
-  if (!authHeader || !authHeader.includes(adminPassword)) {
+  // Item 2: 精确匹配，防止子字符串绕过
+  if (!authHeader || authHeader !== `Bearer ${adminPassword}`) {
     return c.json({ error: 'Unauthorized: Invalid Password' }, 401);
   }
 
   await next();
 });
 
-// === API 路由 ===
+// ============================================================
+// API 路由
+// ============================================================
 
-// 获取所有监控项
+// 获取所有监控项（管理后台用，含敏感字段）
 app.get('/monitors', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare('SELECT * FROM monitors').all();
+    const { results } = await c.env.DB.prepare('SELECT * FROM monitors ORDER BY created_at ASC').all<Monitor>();
     return c.json(results);
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
-// 公开状态页数据 (只读，不含敏感信息)
+// 公开状态页数据（不含敏感字段）
 app.get('/monitors/public', async (c) => {
   try {
-    // 只选择需要的字段，甚至可以隐藏 url
     const { results } = await c.env.DB.prepare(
-      'SELECT id, name, url, status, last_check, cert_expiry, domain_expiry FROM monitors'
-    ).all();
+      'SELECT id, name, url, status, last_check, cert_expiry, domain_expiry, paused FROM monitors ORDER BY created_at ASC'
+    ).all<Pick<Monitor, 'id' | 'name' | 'url' | 'status' | 'last_check' | 'cert_expiry' | 'domain_expiry' | 'paused'>>();
     return c.json(results);
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
-// 添加监控项
+// 添加监控项 (Item 14: 添加后立即触发证书/域名信息获取)
 app.post('/monitors', async (c) => {
   try {
-    const body = await c.req.json<any>();
+    const body = await c.req.json<Partial<Monitor>>();
     const { name, url, interval, keyword, user_agent } = body;
-    
+
     if (!name || !url) {
       return c.json({ error: 'Missing name or url' }, 400);
     }
@@ -74,73 +119,143 @@ app.post('/monitors', async (c) => {
       'INSERT INTO monitors (name, url, interval, keyword, user_agent) VALUES (?, ?, ?, ?, ?)'
     ).bind(name, url, interval || 300, keyword || null, user_agent || null).run();
 
-    return c.json({ success: true, id: result.meta.last_row_id }, 201);
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+    const newId = result.meta.last_row_id as number;
+
+    // Item 14: 立即异步触发一次证书/域名信息获取
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          // 标记 check_info_status 防止 checkSites cron 重复触发
+          await c.env.DB.prepare('UPDATE monitors SET check_info_status = ? WHERE id = ?')
+            .bind(new Date().toISOString(), newId)
+            .run();
+          const { results } = await c.env.DB.prepare('SELECT * FROM monitors WHERE id = ?')
+            .bind(newId)
+            .all<Monitor>();
+          if (results[0]) {
+            await updateDomainCertInfo(c.env, results[0]);
+          }
+        } catch (err) {
+          console.error('Initial cert check failed:', err);
+        }
+      })()
+    );
+
+    return c.json({ success: true, id: newId }, 201);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
-// 删除监控项
+// 删除监控项（同时清理日志）
 app.delete('/monitors/:id', async (c) => {
   const id = c.req.param('id');
   try {
-    // 注意：由于外键约束，必须先删除子表(logs)的数据，再删除主表(monitors)的数据
-    // 或者在定义表结构时使用 ON DELETE CASCADE
     await c.env.DB.prepare('DELETE FROM logs WHERE monitor_id = ?').bind(id).run();
     await c.env.DB.prepare('DELETE FROM monitors WHERE id = ?').bind(id).run();
     return c.json({ success: true });
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
-// 获取指定监控项的最近日志
+// 切换监控暂停状态 (Item 6: 新增接口)
+app.patch('/monitors/:id/pause', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT paused, status FROM monitors WHERE id = ?'
+    ).bind(id).all<Pick<Monitor, 'paused' | 'status'>>();
+
+    if (!results[0]) {
+      return c.json({ error: 'Monitor not found' }, 404);
+    }
+
+    const currentlyPaused = results[0].paused === 1;
+    const newPaused = currentlyPaused ? 0 : 1;
+    // 从暂停恢复时重置为 UP，暂停时设为 PAUSED
+    const newStatus: Monitor['status'] = newPaused ? 'PAUSED' : 'UP';
+
+    await c.env.DB.prepare(
+      'UPDATE monitors SET paused = ?, status = ?, retry_count = 0 WHERE id = ?'
+    ).bind(newPaused, newStatus, id).run();
+
+    return c.json({ success: true, paused: newPaused === 1, status: newStatus });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 获取指定监控项的最近日志（增至50条以支持趋势图）
 app.get('/monitors/:id/logs', async (c) => {
   const id = c.req.param('id');
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM logs WHERE monitor_id = ? ORDER BY created_at DESC LIMIT 20'
-    ).bind(id).all();
+      'SELECT * FROM logs WHERE monitor_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).bind(id).all<Log>();
     return c.json(results);
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
 // 测试钉钉通知
 app.post('/test-alert', async (c) => {
   try {
-    const result = await sendDingTalkAlert(c.env, { name: 'Test Monitor', url: 'https://example.com' }, 'UP', '这是一条测试消息，用于验证 Markdown 格式是否生效。');
+    const mockMonitor = { name: 'Test Monitor', url: 'https://example.com' } as Monitor;
+    const result = await sendDingTalkAlert(c.env, mockMonitor, 'DOWN', '这是一条测试消息，用于验证 Markdown 格式是否生效。');
     return c.json({ success: true, dingtalk_response: result });
-  } catch (e) {
-    return c.json({ error: e.message }, 500);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
   }
 });
 
-// === 定时任务入口 ===
+// ============================================================
+// 定时任务入口
+// ============================================================
 
 export default {
   fetch: app.fetch,
-  
-  async scheduled(event: ScheduledEvent, env: Bindings, ctx: ExecutionContext) {
-    ctx.waitUntil(checkSites(env));
+
+  async scheduled(_event: ScheduledEvent, env: Bindings, ctx: ExecutionContext) {
+    ctx.waitUntil(runScheduledTasks(env));
   },
 };
 
-// === 核心监测逻辑 ===
+async function runScheduledTasks(env: Bindings) {
+  const hour = new Date().getUTCHours();
+
+  const tasks: Promise<void>[] = [checkSites(env)];
+
+  // 每天 UTC 02:00（北京时间 10:00）执行一次耗时任务
+  if (hour === 2) {
+    tasks.push(cleanupLogs(env));
+    tasks.push(checkExpiryAlerts(env));
+  }
+
+  await Promise.all(tasks);
+}
+
+// ============================================================
+// 核心监测逻辑
+// ============================================================
 
 async function checkSites(env: Bindings) {
   console.log('Starting scheduled check...');
-  const now = Date.now(); // 毫秒
+  const now = Date.now();
 
-  // 获取所有监控项
-  // 优化点：生产环境应该在 SQL 中筛选 (last_check + interval < now)
-  const { results } = await env.DB.prepare('SELECT * FROM monitors').all();
-  
-  // 使用 Promise.all 并发执行，提高效率
-  const tasks = results.map(async (monitor: any) => {
-    const shouldCheck = isTimeToCheck(monitor, now);
-    if (shouldCheck) {
+  const { results } = await env.DB.prepare('SELECT * FROM monitors').all<Monitor>();
+
+  const tasks = results.map(async (monitor) => {
+    // Item 6: 跳过已暂停的监控项
+    if (monitor.paused === 1) return;
+
+    if (isTimeToCheck(monitor, now)) {
       await performCheck(monitor, env);
     }
   });
@@ -148,17 +263,14 @@ async function checkSites(env: Bindings) {
   await Promise.all(tasks);
 }
 
-function isTimeToCheck(monitor: any, now: number): boolean {
-  // 如果状态是 RETRYING，每分钟都检查 (Cron 本身是每分钟触发)
+function isTimeToCheck(monitor: Monitor, now: number): boolean {
   if (monitor.status === 'RETRYING') return true;
-
-  // 正常状态，检查间隔
   const lastCheck = monitor.last_check ? new Date(monitor.last_check).getTime() : 0;
   const intervalMs = (monitor.interval || 300) * 1000;
-  return (now - lastCheck) >= intervalMs;
+  return now - lastCheck >= intervalMs;
 }
 
-async function performCheck(monitor: any, env: Bindings) {
+async function performCheck(monitor: Monitor, env: Bindings) {
   const startTime = Date.now();
   let status = 200;
   let isFail = false;
@@ -167,34 +279,34 @@ async function performCheck(monitor: any, env: Bindings) {
   try {
     const response = await fetch(monitor.url, {
       method: monitor.method || 'GET',
-      headers: { 
-        'User-Agent': monitor.user_agent || 'Uptime-Monitor/1.0' 
+      headers: {
+        'User-Agent': monitor.user_agent || 'Uptime-Monitor/1.0',
       },
       cf: {
-        // 避免 Cloudflare 缓存，确保请求穿透
         cacheTtl: 0,
-        cacheEverything: false
-      }
+        cacheEverything: false,
+      } as RequestInitCfProperties,
     });
-    
+
     status = response.status;
-    
+
     if (!response.ok) {
       isFail = true;
       reason = `HTTP ${status}`;
     } else {
-      // 请求成功，顺便检查一下是否需要更新域名/证书信息 (例如每 24 小时更新一次，或者从未更新过时)
-      const lastInfoCheck = monitor.check_info_status ? new Date(monitor.check_info_status).getTime() : 0;
-      // 24 小时 = 86400000 ms
+      // 每 24 小时刷新一次证书/域名信息
+      const lastInfoCheck = monitor.check_info_status
+        ? new Date(monitor.check_info_status).getTime()
+        : 0;
       if (Date.now() - lastInfoCheck > 86400000) {
-        // 异步执行，不阻塞主监测逻辑
-        env.DB.prepare('UPDATE monitors SET check_info_status = ? WHERE id = ?').bind(new Date().toISOString(), monitor.id).run().then(() => {
-           updateDomainCertInfo(env, monitor);
-        }).catch(console.error);
+        env.DB.prepare('UPDATE monitors SET check_info_status = ? WHERE id = ?')
+          .bind(new Date().toISOString(), monitor.id)
+          .run()
+          .then(() => updateDomainCertInfo(env, monitor))
+          .catch(console.error);
       }
-      
+
       if (monitor.keyword) {
-        // 关键词检查
         const text = await response.text();
         if (!text.includes(monitor.keyword)) {
           isFail = true;
@@ -202,13 +314,16 @@ async function performCheck(monitor: any, env: Bindings) {
         }
       }
     }
-
-  } catch (e) {
+  } catch (e: unknown) {
     isFail = true;
     status = 0;
-    // 尝试识别 SSL 相关错误
-    const errorMsg = e.message || '';
-    if (errorMsg.includes('handshake') || errorMsg.includes('certificate') || errorMsg.includes('SSL') || errorMsg.includes('TLS')) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+    if (
+      errorMsg.includes('handshake') ||
+      errorMsg.includes('certificate') ||
+      errorMsg.includes('SSL') ||
+      errorMsg.includes('TLS')
+    ) {
       reason = `SSL Error: ${errorMsg}`;
     } else if (errorMsg.includes('time') || errorMsg.includes('timeout')) {
       reason = 'Timeout';
@@ -220,34 +335,29 @@ async function performCheck(monitor: any, env: Bindings) {
   const latency = Date.now() - startTime;
 
   // 状态机逻辑
-  let newStatus = monitor.status;
+  let newStatus: Monitor['status'] = monitor.status;
   let newRetryCount = monitor.retry_count;
 
   if (isFail) {
     if (monitor.status === 'UP') {
-      // 第一次失败，进入重试
       newStatus = 'RETRYING';
       newRetryCount = 1;
       console.log(`Monitor ${monitor.name} failed first time. Retrying...`);
     } else if (monitor.status === 'RETRYING') {
-      // 重试中再次失败
       if (newRetryCount < 3) {
         newRetryCount++;
         console.log(`Monitor ${monitor.name} retry ${newRetryCount}/3 failed.`);
       } else {
-        // 三次重试失败，确认 DOWN
         newStatus = 'DOWN';
         await sendDingTalkAlert(env, monitor, 'DOWN', `错误原因: ${reason}`);
         console.log(`Monitor ${monitor.name} is DOWN! Alert sent.`);
       }
     } else if (monitor.status === 'DOWN') {
-      // 已经是 DOWN，持续 DOWN，不重复报警（或者可以设置间隔报警）
+      // 持续 DOWN，不重复报警
       console.log(`Monitor ${monitor.name} is still DOWN.`);
     }
   } else {
-    // 成功
     if (monitor.status === 'DOWN') {
-      // 从 DOWN 恢复
       await sendDingTalkAlert(env, monitor, 'UP', `响应耗时: ${latency}ms`);
       console.log(`Monitor ${monitor.name} recovered.`);
     }
@@ -255,32 +365,141 @@ async function performCheck(monitor: any, env: Bindings) {
     newRetryCount = 0;
   }
 
-  // 更新数据库状态
   await env.DB.prepare(
     'UPDATE monitors SET last_check = ?, status = ?, retry_count = ? WHERE id = ?'
-  ).bind(new Date().toISOString(), newStatus, newRetryCount, monitor.id).run();
+  )
+    .bind(new Date().toISOString(), newStatus, newRetryCount, monitor.id)
+    .run();
 
-  // 写入日志
   await env.DB.prepare(
     'INSERT INTO logs (monitor_id, status_code, latency, is_fail, reason) VALUES (?, ?, ?, ?, ?)'
-  ).bind(monitor.id, status, latency, isFail ? 1 : 0, reason).run();
+  )
+    .bind(monitor.id, status, latency, isFail ? 1 : 0, reason || null)
+    .run();
 }
 
-// 发送钉钉机器人通知 (支持加签)
-async function sendDingTalkAlert(env: Bindings, monitor: any, type: 'DOWN' | 'UP', detail: string) {
-  // 优先从环境变量读取，如果没有则使用硬编码
-  const accessToken = env.DINGTALK_ACCESS_TOKEN || '59f62a4b15f5fa9b7338ffaeacc5c199b537038ec79e57db681e48293cc6625d';
-  const secret = env.DINGTALK_SECRET || 'SEC6243e3cced1f46b53340f22603f10fca92389f5891de46530a61ac30bc2da5c6';
-  
+// ============================================================
+// 日志自动清理 (Item 13)
+// ============================================================
+
+async function cleanupLogs(env: Bindings) {
+  console.log('Starting log cleanup...');
+  try {
+    // 删除 30 天前的日志
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { meta: deletedOld } = await env.DB.prepare(
+      'DELETE FROM logs WHERE created_at < ?'
+    )
+      .bind(thirtyDaysAgo)
+      .run();
+    console.log(`Deleted ${deletedOld.changes} old logs (>30d).`);
+
+    // 每个监控项保留最近 1000 条
+    const { results } = await env.DB.prepare(
+      'SELECT id FROM monitors'
+    ).all<{ id: number }>();
+
+    for (const monitor of results) {
+      await env.DB.prepare(`
+        DELETE FROM logs
+        WHERE monitor_id = ?
+          AND id NOT IN (
+            SELECT id FROM logs
+            WHERE monitor_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1000
+          )
+      `)
+        .bind(monitor.id, monitor.id)
+        .run();
+    }
+    console.log('Log cleanup completed.');
+  } catch (e: unknown) {
+    console.error('Log cleanup error:', e);
+  }
+}
+
+// ============================================================
+// SSL / 域名到期主动告警 (Item 10)
+// ============================================================
+
+async function checkExpiryAlerts(env: Bindings) {
+  console.log('Checking expiry alerts...');
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT id, name, url, cert_expiry, domain_expiry
+       FROM monitors
+       WHERE paused = 0`
+    ).all<Pick<Monitor, 'id' | 'name' | 'url' | 'cert_expiry' | 'domain_expiry'>>();
+
+    const now = Date.now();
+
+    const tasks = results.map(async (monitor) => {
+      const checks: { label: string; dateStr: string | null }[] = [
+        { label: 'SSL 证书', dateStr: monitor.cert_expiry },
+        { label: '域名', dateStr: monitor.domain_expiry },
+      ];
+
+      for (const check of checks) {
+        if (!check.dateStr) continue;
+        const daysLeft = Math.ceil(
+          (new Date(check.dateStr).getTime() - now) / (1000 * 60 * 60 * 24)
+        );
+
+        if (daysLeft <= 0) {
+          await sendDingTalkAlert(
+            env,
+            monitor as Monitor,
+            'DOWN',
+            `⚠️ **${check.label}已过期**！请立即处理。`
+          );
+        } else if (daysLeft <= 7) {
+          await sendDingTalkAlert(
+            env,
+            monitor as Monitor,
+            'DOWN',
+            `🚨 **${check.label}紧急预警**：将在 ${daysLeft} 天后到期，请尽快续期！`
+          );
+        } else if (daysLeft <= 30) {
+          await sendDingTalkAlert(
+            env,
+            monitor as Monitor,
+            'DOWN',
+            `⚠️ **${check.label}到期提醒**：将在 ${daysLeft} 天后到期，请注意续期。`
+          );
+        }
+      }
+    });
+
+    await Promise.all(tasks);
+    console.log('Expiry alert check completed.');
+  } catch (e: unknown) {
+    console.error('Expiry alert check error:', e);
+  }
+}
+
+// ============================================================
+// 钉钉机器人通知（Item 1: 移除硬编码密钥）
+// ============================================================
+
+async function sendDingTalkAlert(
+  env: Bindings,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<DingTalkResult | undefined> {
+  // Item 1: 仅从环境变量读取，无硬编码密钥
+  const accessToken = env.DINGTALK_ACCESS_TOKEN;
+  const secret = env.DINGTALK_SECRET;
+
   if (!accessToken || !secret) {
-    console.warn('No DINGTALK_ACCESS_TOKEN or DINGTALK_SECRET configured.');
+    console.warn('DingTalk not configured: DINGTALK_ACCESS_TOKEN or DINGTALK_SECRET missing.');
     return;
   }
 
   const timestamp = Date.now();
   const stringToSign = `${timestamp}\n${secret}`;
-  
-  // 计算 HMAC-SHA256 签名
+
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -295,10 +514,9 @@ async function sendDingTalkAlert(env: Bindings, monitor: any, type: 'DOWN' | 'UP
 
   const webhookUrl = `https://oapi.dingtalk.com/robot/send?access_token=${accessToken}&timestamp=${timestamp}&sign=${signEncoded}`;
 
-  // 构建 Markdown 消息
   const isDown = type === 'DOWN';
   const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
-  const color = isDown ? '#ff0000' : '#008000'; // 红色或绿色
+  const color = isDown ? '#ff0000' : '#008000';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
   const markdownText = `
@@ -317,99 +535,96 @@ async function sendDingTalkAlert(env: Bindings, monitor: any, type: 'DOWN' | 'UP
 
   const payload = {
     msgtype: 'markdown',
-    markdown: {
-      title: title,
-      text: markdownText
-    }
+    markdown: { title, text: markdownText },
   };
 
   try {
     const resp = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
-    const result = await resp.json<any>();
+    const result = await resp.json<DingTalkResult>();
     if (result.errcode !== 0) {
       console.error('DingTalk API Error:', result);
     }
     return result;
-  } catch (e) {
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
     console.error('Failed to send DingTalk alert:', e);
-    return { errcode: -1, errmsg: e.message };
+    return { errcode: -1, errmsg: msg };
   }
 }
 
-// === 域名/证书信息更新逻辑 ===
+// ============================================================
+// 域名 / 证书信息更新逻辑
+// ============================================================
 
-async function updateDomainCertInfo(env: Bindings, monitor: any) {
+async function updateDomainCertInfo(env: Bindings, monitor: Monitor) {
   console.log(`Updating info for ${monitor.url}`);
   try {
     const urlObj = new URL(monitor.url);
     const domain = urlObj.hostname;
-    
-    // 1. 尝试获取证书信息 (通过 crt.sh 公开 API)
-    let certExpiry = null;
+
+    // 如果是 IP 地址则跳过
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(domain)) {
+      console.log(`Skipping cert/domain check for IP address: ${domain}`);
+      return;
+    }
+
+    let certExpiry: string | null = null;
     try {
-      const headers = { 
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
-      };
+      const browserUA =
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      const headers = { 'User-Agent': browserUA };
 
-      const fetchCerts = async (searchDomain: string) => {
+      const fetchCerts = async (searchDomain: string): Promise<Record<string, unknown>[]> => {
+        try {
+          const res = await fetch(`https://crt.sh/?q=${searchDomain}&output=json`, { headers });
+          if (!res.ok) return [];
+          const text = await res.text();
           try {
-              const res = await fetch(`https://crt.sh/?q=${searchDomain}&output=json`, { headers });
-              if (!res.ok) {
-                  console.warn(`crt.sh fetch failed for ${searchDomain}: ${res.status}`);
-                  return [];
-              }
-              const text = await res.text();
-              try {
-                  return JSON.parse(text);
-              } catch {
-                  console.warn(`crt.sh response for ${searchDomain} is not JSON`);
-                  return [];
-              }
-          } catch (e) {
-              console.warn('fetchCerts error:', e);
-              return [];
+            return JSON.parse(text) as Record<string, unknown>[];
+          } catch {
+            return [];
           }
+        } catch {
+          return [];
+        }
       };
 
-      // 先查原始域名
       let certs = await fetchCerts(domain);
-      
-      // 如果没查到，且域名看起来像子域名，尝试查主域名
-      if ((!certs || certs.length === 0) && domain.split('.').length > 2) {
-         const parts = domain.split('.');
-         const rootDomain = parts.slice(parts.length - 2).join('.');
-         
-         console.log(`Checking root domain for wildcard: ${rootDomain}`);
-         // 查主域名
-         const rootCerts = await fetchCerts(rootDomain);
-         if (rootCerts.length > 0) certs = certs.concat(rootCerts);
-         
-         // 查显式泛域名
-         const wildCerts = await fetchCerts(`%.${rootDomain}`);
-         if (wildCerts.length > 0) certs = certs.concat(wildCerts);
+
+      if (certs.length === 0 && domain.split('.').length > 2) {
+        const parts = domain.split('.');
+        const rootDomain = parts.slice(parts.length - 2).join('.');
+        const rootCerts = await fetchCerts(rootDomain);
+        const wildCerts = await fetchCerts(`%.${rootDomain}`);
+        certs = [...rootCerts, ...wildCerts];
       }
 
-      if (certs && certs.length > 0) {
-        const latestCert = certs.sort((a: any, b: any) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime())[0];
-        certExpiry = latestCert.not_after;
+      if (certs.length > 0) {
+        const sorted = certs.sort(
+          (a, b) =>
+            new Date(b.not_after as string).getTime() -
+            new Date(a.not_after as string).getTime()
+        );
+        certExpiry = sorted[0].not_after as string;
         console.log(`Found cert expiry for ${domain}: ${certExpiry}`);
       }
     } catch (e) {
       console.warn('Failed to fetch cert info:', e);
     }
 
-    // 2. 尝试获取域名到期时间 (通过 RDAP)
-    let domainExpiry = null;
+    let domainExpiry: string | null = null;
     try {
       const rdapRes = await fetch(`https://rdap.org/domain/${domain}`);
       if (rdapRes.ok) {
-        const rdapData = await rdapRes.json<any>();
+        const rdapData = await rdapRes.json<{
+          events?: { eventAction: string; eventDate: string }[];
+        }>();
         const events = rdapData.events || [];
-        const expEvent = events.find((e: any) => e.eventAction.includes('expiration'));
+        const expEvent = events.find((e) => e.eventAction.includes('expiration'));
         if (expEvent) {
           domainExpiry = expEvent.eventDate;
         }
@@ -418,15 +633,15 @@ async function updateDomainCertInfo(env: Bindings, monitor: any) {
       console.warn('Failed to fetch RDAP info:', e);
     }
 
-    // 更新数据库
     if (certExpiry || domainExpiry) {
       await env.DB.prepare(
         'UPDATE monitors SET cert_expiry = ?, domain_expiry = ? WHERE id = ?'
-      ).bind(certExpiry, domainExpiry, monitor.id).run();
+      )
+        .bind(certExpiry, domainExpiry, monitor.id)
+        .run();
       console.log(`Updated info for ${domain}: Cert=${certExpiry}, Domain=${domainExpiry}`);
     }
-
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('Error in updateDomainCertInfo:', e);
   }
 }
