@@ -59,6 +59,13 @@
             background: #94a3b8;
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+        }
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.95) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
         @media (prefers-color-scheme: dark) {
             ::-webkit-scrollbar-thumb {
                 background: #334155;
@@ -270,80 +277,29 @@
                 </div>
             </div>
 
-            <!-- 添加监控卡片 -->
-            <div
-                class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 mb-8 overflow-hidden">
-                <div
-                    class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i class="fas fa-plus-circle text-blue-500"></i> 添加新监控
-                    </h3>
-                    <span class="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">HTTPS
-                        / HTTP</span>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div class="md:col-span-4">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">网站名称</label>
-                            <input v-model="newMonitor.name" placeholder="例如: Google Search"
-                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none">
-                        </div>
-                        <div class="md:col-span-8">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">URL
-                                地址</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                    <i class="fas fa-link text-xs"></i>
-                                </span>
-                                <input v-model="newMonitor.url" placeholder="https://example.com"
-                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg pl-9 pr-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none font-mono text-sm">
-                            </div>
-                        </div>
-                        <div class="md:col-span-4">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">关键词验证
-                                (可选)</label>
-                            <input v-model="newMonitor.keyword" placeholder="页面必须包含的内容"
-                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none">
-                        </div>
-                        <div class="md:col-span-5">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">User-Agent
-                                (可选)</label>
-                            <input v-model="newMonitor.user_agent" placeholder="默认: Uptime-Monitor/1.0"
-                                class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-2.5 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none font-mono text-xs">
-                        </div>
-                        <!-- 功能开关与静默窗口 -->
-                        <div class="md:col-span-12 flex flex-wrap items-center gap-6 pt-1 border-t border-gray-100 dark:border-slate-700">
-                            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
-                                <input type="checkbox" v-model="newMonitor.check_ssl" class="w-4 h-4 rounded accent-blue-500">
-                                <i class="fas fa-lock text-xs text-gray-400"></i> 检测 SSL 证书
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
-                                <input type="checkbox" v-model="newMonitor.check_domain" class="w-4 h-4 rounded accent-blue-500">
-                                <i class="fas fa-globe text-xs text-gray-400"></i> 检测域名到期
-                            </label>
-                            <span class="text-xs text-gray-400">告警频率可在添加后通过「配置」按鈕调整</span>
-                        </div>
-                        <div class="md:col-span-3 flex items-end">
-                            <button @click="addMonitor" :disabled="submitting"
-                                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
-                                <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-                                <i v-else class="fas fa-paper-plane"></i>
-                                {{ submitting ? '添加中...' : '开始监控' }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+
+            <!-- 监控列表操作栏 -->
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">监控列表</h2>
+                <button @click="showAddModal = true"
+                    class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm hover:shadow-md cursor-pointer">
+                    <i class="fas fa-plus text-xs"></i>
+                    添加监控
+                </button>
             </div>
 
             <!-- 监控列表 -->
             <div v-if="monitors.length === 0 && !loading"
                 class="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-                <div
-                    class="w-20 h-20 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div class="w-20 h-20 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-server text-3xl text-gray-300 dark:text-slate-500"></i>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">暂无监控项目</h3>
-                <p class="text-gray-500 dark:text-slate-400 mt-1">在上方添加您的第一个网站监控</p>
+                <p class="text-gray-500 dark:text-slate-400 mt-1 mb-6">点击上方「添加监控」开始配置</p>
+                <button @click="showAddModal = true"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm cursor-pointer">
+                    <i class="fas fa-plus text-xs"></i> 添加第一个监控
+                </button>
             </div>
 
             <div v-else class="grid gap-4">
@@ -582,6 +538,86 @@
                 </div>
             </div>
         </transition>
+        <!-- 添加监控 Modal -->
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+            <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <!-- 遗罩 -->
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showAddModal = false"></div>
+                <!-- 对话框 -->
+                <div class="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 flex flex-col overflow-hidden"
+                    style="animation:modal-in 0.2s ease-out">
+                    <!-- 头部 -->
+                    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-plus text-xs text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">添加监控</h3>
+                        </div>
+                        <button @click="showAddModal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <!-- 表单 -->
+                    <div class="p-6 space-y-4 overflow-y-auto">
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-12 sm:col-span-5">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">网站名称</label>
+                                <input v-model="newMonitor.name" placeholder="例如: Google" autofocus
+                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none">
+                            </div>
+                            <div class="col-span-12 sm:col-span-7">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">URL 地址</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                        <i class="fas fa-link text-xs"></i>
+                                    </span>
+                                    <input v-model="newMonitor.url" placeholder="https://example.com" @keyup.enter="addMonitor"
+                                        class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg pl-8 pr-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none font-mono">
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-6">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">关键词验证 <span class="text-gray-300">可选</span></label>
+                                <input v-model="newMonitor.keyword" placeholder="页面必须包含的内容"
+                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none">
+                            </div>
+                            <div class="col-span-12 sm:col-span-6">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">User-Agent <span class="text-gray-300">可选</span></label>
+                                <input v-model="newMonitor.user_agent" placeholder="默认: Uptime-Monitor/1.0"
+                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none font-mono">
+                            </div>
+                            <!-- 功能开关 -->
+                            <div class="col-span-12 flex flex-wrap items-center gap-5 pt-1 border-t border-gray-100 dark:border-slate-700">
+                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
+                                    <input type="checkbox" v-model="newMonitor.check_ssl" class="w-4 h-4 rounded accent-green-500">
+                                    <i class="fas fa-lock text-xs text-gray-400"></i> 检测 SSL 证书
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
+                                    <input type="checkbox" v-model="newMonitor.check_domain" class="w-4 h-4 rounded accent-green-500">
+                                    <i class="fas fa-globe text-xs text-gray-400"></i> 检测域名到期
+                                </label>
+                                <span class="text-xs text-gray-400">告警频率可添加后配置</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 底部按钮 -->
+                    <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/30 dark:bg-slate-900/30 flex justify-end gap-3">
+                        <button @click="showAddModal = false"
+                            class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+                            取消
+                        </button>
+                        <button @click="addMonitor" :disabled="submitting"
+                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                            <i v-if="submitting" class="fas fa-spinner fa-spin text-xs"></i>
+                            <i v-else class="fas fa-paper-plane text-xs"></i>
+                            {{ submitting ? '添加中...' : '开始监控' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <!-- 遮罩层 -->
         <div v-if="showLogs || showConfig" @click="showLogs = false; showConfig = false"
             class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"></div>
@@ -725,6 +761,7 @@
                 const logsLoading = ref(false);
                 const currentMonitor = ref(null);
                 const newMonitor = ref({ name: '', url: '', keyword: '', user_agent: '', check_ssl: true, check_domain: true, alert_silence_hours: '24' });
+                const showAddModal = ref(false);
                 const loading = ref(false);
                 const submitting = ref(false);
                 const error = ref(null);
@@ -938,6 +975,7 @@
                         });
                         if (res.ok) {
                             newMonitor.value = { name: '', url: '', keyword: '', user_agent: '', check_ssl: true, check_domain: true, alert_silence_hours: '24' };
+                            showAddModal.value = false;
                             addToast('监控添加成功，正在获取证书信息…', 'success');
                             fetchMonitors();
                         } else {
@@ -1042,8 +1080,9 @@
                 return {
                     monitors, newMonitor, logs, showLogs, logsLoading, currentMonitor,
                     loading, submitting, inputPassword, isAuthenticated, error,
-                    toasts, confirmModal,
+                    toasts,
                     stats, sparkline, uptimeStats,
+                    showAddModal,
                     showConfig, configTarget, configForm, configSaving, silenceOptions, silenceItems,
                     login, logout,
                     addMonitor, deleteMonitor, viewLogs, fetchMonitors,
