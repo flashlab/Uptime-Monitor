@@ -186,15 +186,16 @@
                 <div class="flex items-center gap-3">
                     <!-- Logo -->
                     <div class="relative">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center border border-emerald-500/20">
+                        <img v-if="siteSettings.site_logo_url" :src="siteSettings.site_logo_url" alt="Logo" class="w-8 h-8 rounded-lg object-contain">
+                        <div v-else class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center border border-emerald-500/20">
                             <svg class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
                     </div>
                     <div>
-                        <span class="font-bold text-slate-900 dark:text-white tracking-tight text-[15px]">Uptime<span class="text-emerald-500 dark:text-emerald-400">.</span>Monitor</span>
-                        <p class="text-[10px] text-slate-400 dark:text-slate-600 font-mono -mt-0.5 tracking-wider">STATUS PAGE</p>
+                        <span class="font-bold text-slate-900 dark:text-white tracking-tight text-[15px]">{{ siteSettings.site_title || 'Uptime Monitor' }}</span>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-600 font-mono -mt-0.5 tracking-wider truncate max-w-[200px]">{{ siteSettings.site_description || 'STATUS PAGE' }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
