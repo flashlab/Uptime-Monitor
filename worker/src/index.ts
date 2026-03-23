@@ -451,21 +451,21 @@ async function checkExpiryAlerts(env: Bindings) {
             env,
             monitor as Monitor,
             'DOWN',
-            `⚠️ **${check.label}已过期**！请立即处理。`
+            `❌ ${check.label}已过期，请立即续期处理！`
           );
         } else if (daysLeft <= 7) {
           await sendDingTalkAlert(
             env,
             monitor as Monitor,
             'DOWN',
-            `🚨 **${check.label}紧急预警**：将在 ${daysLeft} 天后到期，请尽快续期！`
+            `🚨 ${check.label}紧急预警，仅剩 ${daysLeft} 天到期，请尽快续期！`
           );
         } else if (daysLeft <= 30) {
           await sendDingTalkAlert(
             env,
             monitor as Monitor,
             'DOWN',
-            `⚠️ **${check.label}到期提醒**：将在 ${daysLeft} 天后到期，请注意续期。`
+            `⏰ ${check.label}到期提醒，还有 ${daysLeft} 天到期，请注意续期。`
           );
         }
       }
@@ -517,6 +517,7 @@ async function sendDingTalkAlert(
   const isDown = type === 'DOWN';
   const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
   const color = isDown ? '#ff0000' : '#008000';
+  const statusText = isDown ? '故障' : '正常';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
   const markdownText = `
@@ -526,11 +527,12 @@ async function sendDingTalkAlert(
 
 **监控地址**: [点击访问](${monitor.url})
 
-**当前状态**: <font color="${color}">${type}</font>
+**当前状态**: <font color="${color}">${statusText}</font>
 
 **详细信息**: ${detail}
 
-> ⏱️ 时间: ${time}
+---
+📅 告警时间: ${time}
   `.trim();
 
   const payload = {
