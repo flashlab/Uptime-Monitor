@@ -265,6 +265,12 @@ app.post('/monitors/:id/check', async (c) => {
     const { results } = await c.env.DB.prepare('SELECT * FROM monitors WHERE id = ?').bind(id).all<Monitor>();
     if (!results[0]) return c.json({ error: 'Monitor not found' }, 404);
 
+    // 强制执行证书及域名信息获取
+    await updateDomainCertInfo(c.env, results[0]);
+    // 更新最后一次信息获取时间，防止随后重复触发
+    await c.env.DB.prepare('UPDATE monitors SET check_info_status = ? WHERE id = ?')
+      .bind(new Date().toISOString(), id).run();
+
     await performCheck(results[0], c.env);
 
     return c.json({ success: true });
