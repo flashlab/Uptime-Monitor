@@ -1539,10 +1539,8 @@
                 const fetchChannels = async () => {
                     channelsLoading.value = true;
                     try {
-                        const res = await fetch(`${API_BASE}/notification-channels`, {
-                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
-                        });
-                        if (res.ok) channels.value = await res.json();
+                        const res = await authFetch(`${API_BASE}/notification-channels`);
+                        if (res && res.ok) channels.value = await res.json();
                     } catch (e) { console.error(e); }
                     channelsLoading.value = false;
                 };
@@ -1556,11 +1554,10 @@
                             ? `${API_BASE}/notification-channels/${ch.id}`
                             : `${API_BASE}/notification-channels`;
                         const method = ch.id ? 'PATCH' : 'POST';
-                        const res = await fetch(url, {
+                        const res = await authFetch(url, {
                             method,
                             headers: {
-                                'Content-Type': 'application/json',
-                                'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || ''
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({ type: ch.type, name: ch.name, config: ch.config })
                         });
@@ -1603,9 +1600,8 @@
                 const deleteChannel = async (ch) => {
                     if (!confirm(`确定删除通知渠道「${ch.name}」？`)) return;
                     try {
-                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}`, {
-                            method: 'DELETE',
-                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
+                        const res = await authFetch(`${API_BASE}/notification-channels/${ch.id}`, {
+                            method: 'DELETE'
                         });
                         if (res.ok) { addToast('渠道已删除', 'success'); fetchChannels(); }
                     } catch (e) { addToast('删除失败', 'error'); }
@@ -1613,11 +1609,10 @@
 
                 const toggleChannel = async (ch) => {
                     try {
-                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}`, {
+                        const res = await authFetch(`${API_BASE}/notification-channels/${ch.id}`, {
                             method: 'PATCH',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || ''
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({ enabled: ch.enabled ? 0 : 1 })
                         });
@@ -1628,9 +1623,8 @@
                 const testChannel = async (ch) => {
                     addToast('正在发送测试消息...', 'info');
                     try {
-                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}/test`, {
-                            method: 'POST',
-                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
+                        const res = await authFetch(`${API_BASE}/notification-channels/${ch.id}/test`, {
+                            method: 'POST'
                         });
                         const data = await res.json();
                         if (data.success) {
