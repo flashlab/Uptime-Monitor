@@ -259,6 +259,20 @@ app.patch('/monitors/:id/config', async (c) => {
   }
 });
 
+app.post('/monitors/:id/check', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const { results } = await c.env.DB.prepare('SELECT * FROM monitors WHERE id = ?').bind(id).all<Monitor>();
+    if (!results[0]) return c.json({ error: 'Monitor not found' }, 404);
+
+    await performCheck(results[0], c.env);
+
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
+  }
+});
+
 app.patch('/monitors/:id/pause', async (c) => {
   const id = c.req.param('id');
   try {

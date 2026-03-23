@@ -368,6 +368,9 @@
 
                         <!-- 操作按钮 -->
                         <div class="flex items-center gap-1">
+                            <button @click="forceCheck(m)" class="p-2 text-slate-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors cursor-pointer" title="手动监测" :disabled="m._checking">
+                                <i class="fas fa-sync-alt text-sm" :class="{ 'fa-spin text-green-400': m._checking }"></i>
+                            </button>
                             <button @click="togglePause(m)" class="p-2 rounded-lg transition-colors cursor-pointer" :class="m.paused
                                 ? 'text-green-500 hover:bg-green-500/10'
                                 : 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-500/10'"
@@ -1455,6 +1458,25 @@
                     }
                 };
 
+                // ── 手动触发监测 ────────────────────────────────
+                const forceCheck = async (m) => {
+                    if (m._checking) return;
+                    m._checking = true;
+                    try {
+                        const res = await authFetch(`${API_BASE}/monitors/${m.id}/check`, { method: 'POST' });
+                        if (res.ok) {
+                            addToast(`已手动更新监测：${m.name}`, 'success');
+                            fetchMonitors();
+                        } else {
+                            addToast('手动更新失败', 'error');
+                        }
+                    } catch (e) {
+                        addToast('网络错误', 'error');
+                    } finally {
+                        m._checking = false;
+                    }
+                };
+
                 // ── Item 6: 暂停/恢复切换 ────────────────────────
                 const togglePause = async (m) => {
                     try {
@@ -1726,7 +1748,7 @@
                     showConfig, configTarget, configForm, configSaving, silenceOptions, silenceItems,
                     login, logout,
                     addMonitor, deleteMonitor, viewLogs, fetchMonitors,
-                    togglePause, handleConfirm, openConfig, saveConfig,
+                    togglePause, forceCheck, handleConfirm, openConfig, saveConfig,
                     formatDate, getDaysRemaining, getExpiryClass,
                     // 通知渠道
                     showChannels, channels, channelsLoading, channelEditing, channelSaving,
