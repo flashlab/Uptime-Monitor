@@ -29,39 +29,66 @@
         * { font-family: 'Plus Jakarta Sans', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* === 极致 OLED 深空背景 === */
-        body { background: #030712; }
+        /* === 亮色模式 - 温暖纯净白背景 === */
+        body { background: #ffffff; transition: background 0.4s ease; }
+        /* === 暗色模式 OLED 深空背景 === */
+        .dark body, html.dark body { background: #030712; }
 
-        /* 科技网格背景 */
+        /* 科技网格背景 - 亮色隐藏 */
         .grid-bg {
+            background-image: none;
+            background-size: 60px 60px;
+        }
+        .dark .grid-bg {
             background-image:
                 linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-            background-size: 60px 60px;
         }
 
-        /* 玻璃态 */
+        /* 卡片样式 - 亮色：纯白 + 精致阴影 */
         .glass {
+            background: #ffffff;
+            backdrop-filter: none;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
+        }
+        .dark .glass {
             background: rgba(15,23,42,0.55);
             backdrop-filter: blur(20px) saturate(1.8);
             border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: none;
         }
         .glass-card {
+            background: #ffffff;
+            backdrop-filter: none;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .dark .glass-card {
             background: rgba(15,23,42,0.45);
             backdrop-filter: blur(16px) saturate(1.6);
             border: 1px solid rgba(255,255,255,0.04);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: none;
         }
         .glass-card:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .dark .glass-card:hover {
             background: rgba(15,23,42,0.65);
             border-color: rgba(255,255,255,0.1);
-            transform: translateY(-2px);
             box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
         }
 
-        /* 光晕效果 */
-        .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.25), 0 0 60px rgba(34,197,94,0.08); }
-        .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.25), 0 0 60px rgba(239,68,68,0.08); }
+        /* 光晕效果 - 亮色用精致阴影代替光晕 */
+        .glow-green { box-shadow: 0 4px 24px rgba(34,197,94,0.08), 0 1px 4px rgba(0,0,0,0.04); }
+        .glow-red   { box-shadow: 0 4px 24px rgba(239,68,68,0.08), 0 1px 4px rgba(0,0,0,0.04); }
+        .dark .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.25), 0 0 60px rgba(34,197,94,0.08); }
+        .dark .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.25), 0 0 60px rgba(239,68,68,0.08); }
 
         /* 状态脉冲 */
         @keyframes pulse-ring {
@@ -104,16 +131,22 @@
             border-radius: 3px;
             transition: all 0.3s ease;
         }
-        .status-line-green::before { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.4); }
-        .status-line-red::before   { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.4); }
-        .status-line-yellow::before { background: #eab308; box-shadow: 0 0 8px rgba(234,179,8,0.4); }
-        .status-line-gray::before  { background: #475569; }
+        .status-line-green::before { background: #22c55e; box-shadow: none; }
+        .status-line-red::before   { background: #ef4444; box-shadow: none; }
+        .status-line-yellow::before { background: #eab308; box-shadow: none; }
+        .status-line-gray::before  { background: #cbd5e1; }
+        .dark .status-line-green::before { box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+        .dark .status-line-red::before   { box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+        .dark .status-line-yellow::before { box-shadow: 0 0 8px rgba(234,179,8,0.4); }
+        .dark .status-line-gray::before  { background: #475569; }
 
-        /* 滚动条 */
+        /* 滚动条 - 亮色 */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+        .dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
         /* 浮动粒子背景 */
         @keyframes float {
@@ -135,33 +168,33 @@
     </style>
 </head>
 
-<body class="min-h-screen text-slate-200 grid-bg">
+<body class="min-h-screen text-slate-800 dark:text-slate-200 grid-bg">
     <!-- 多层动态背景光晕 -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <!-- 主光晕 - 慢速漂移 -->
-        <div class="absolute -top-48 -right-48 w-[800px] h-[800px] bg-emerald-500/[0.07] rounded-full blur-[128px]" style="animation: float 25s ease-in-out infinite"></div>
-        <div class="absolute top-1/2 -left-64 w-[600px] h-[600px] bg-cyan-500/[0.04] rounded-full blur-[100px]" style="animation: float 30s ease-in-out infinite reverse"></div>
-        <div class="absolute -bottom-32 right-1/4 w-[500px] h-[500px] bg-violet-500/[0.03] rounded-full blur-[120px]" style="animation: float 35s ease-in-out infinite 5s"></div>
+        <!-- 主光晕 - 亮色极淡，暗色明显 -->
+        <div class="absolute -top-48 -right-48 w-[800px] h-[800px] bg-emerald-500/[0.015] dark:bg-emerald-500/[0.07] rounded-full blur-[128px]" style="animation: float 25s ease-in-out infinite"></div>
+        <div class="absolute top-1/2 -left-64 w-[600px] h-[600px] bg-sky-500/[0.01] dark:bg-cyan-500/[0.04] rounded-full blur-[100px]" style="animation: float 30s ease-in-out infinite reverse"></div>
+        <div class="absolute -bottom-32 right-1/4 w-[500px] h-[500px] bg-indigo-500/[0.008] dark:bg-violet-500/[0.03] rounded-full blur-[120px]" style="animation: float 35s ease-in-out infinite 5s"></div>
         <!-- 顶部渐变遮罩 -->
-        <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-emerald-950/20 to-transparent"></div>
+        <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white dark:from-emerald-950/20 to-transparent"></div>
     </div>
 
     <div id="app" class="min-h-screen flex flex-col">
         <!-- 顶部导航 -->
-        <header class="sticky top-0 z-40 border-b border-white/[0.04]" style="background:rgba(3,7,18,0.8);backdrop-filter:blur(24px) saturate(1.5)">
+        <header class="sticky top-0 z-40 border-b border-black/[0.06] dark:border-white/[0.04] transition-colors duration-300" :style="isDark ? 'background:rgba(3,7,18,0.8);backdrop-filter:blur(24px) saturate(1.5)' : 'background:rgba(255,255,255,0.8);backdrop-filter:blur(24px) saturate(1.5)'">
             <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <!-- Logo -->
                     <div class="relative">
                         <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center border border-emerald-500/20">
-                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
                     </div>
                     <div>
-                        <span class="font-bold text-white tracking-tight text-[15px]">Uptime<span class="text-emerald-400">.</span>Monitor</span>
-                        <p class="text-[10px] text-slate-600 font-mono -mt-0.5 tracking-wider">STATUS PAGE</p>
+                        <span class="font-bold text-slate-900 dark:text-white tracking-tight text-[15px]">Uptime<span class="text-emerald-500 dark:text-emerald-400">.</span>Monitor</span>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-600 font-mono -mt-0.5 tracking-wider">STATUS PAGE</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
@@ -175,10 +208,10 @@
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                             </svg>
                         </div>
-                        <span class="font-mono text-slate-400">{{ loading ? 'SYNCING' : 'LIVE' }}</span>
+                        <span class="font-mono text-slate-500 dark:text-slate-400">{{ loading ? 'SYNCING' : 'LIVE' }}</span>
                     </div>
                     <!-- 主题切换 -->
-                    <button @click="toggleTheme" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-300 cursor-pointer" :title="isDark ? '切换亮色' : '切换暗色'">
+                    <button @click="toggleTheme" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all duration-300 cursor-pointer" :title="isDark ? '切换亮色' : '切换暗色'">
                         <svg v-if="isDark" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/>
                         </svg>
@@ -197,67 +230,67 @@
             <div class="mb-12 fade-up">
                 <!-- 全部正常 -->
                 <div v-if="allUp && !hasRetrying && !error"
-                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-emerald-500/15 glow-green">
-                    <!-- 放射渐变背景 -->
-                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-950/40 via-emerald-900/10 to-transparent"></div>
-                    <div class="absolute top-0 right-0 w-80 h-80 bg-emerald-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-emerald-200 dark:border-emerald-500/15 glow-green">
+                    <!-- 背景渐变 -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-white dark:from-emerald-950/40 dark:via-emerald-900/10 dark:to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
                     <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div class="flex items-start gap-5">
-                            <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                                <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <div class="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-500/20">
+                                <svg class="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">所有系统运行正常</h1>
-                                <p class="text-sm text-emerald-400/70 font-mono tracking-wider">ALL SYSTEMS OPERATIONAL</p>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1">所有系统运行正常</h1>
+                                <p class="text-sm text-emerald-600/70 dark:text-emerald-400/70 font-mono tracking-wider">ALL SYSTEMS OPERATIONAL</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                                 <span class="relative flex h-2 w-2">
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                                 </span>
-                                <span class="text-xs font-bold font-mono text-emerald-400 tracking-widest">OPERATIONAL</span>
+                                <span class="text-xs font-bold font-mono text-emerald-500 dark:text-emerald-400 tracking-widest">OPERATIONAL</span>
                             </div>
                         </div>
                     </div>
                     <!-- 底部统计 -->
-                    <div class="relative mt-8 pt-6 border-t border-emerald-500/10 grid grid-cols-3 gap-6">
+                    <div class="relative mt-8 pt-6 border-t border-emerald-200 dark:border-emerald-500/10 grid grid-cols-3 gap-6">
                         <div>
-                            <p class="text-xs text-slate-500 font-mono mb-1">MONITORS</p>
-                            <p class="text-2xl font-bold text-white font-mono">{{ monitors.filter(m=>m.paused!==1).length }}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1">MONITORS</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white font-mono">{{ monitors.filter(m=>m.paused!==1).length }}</p>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-500 font-mono mb-1">UPTIME</p>
-                            <p class="text-2xl font-bold text-emerald-400 font-mono">{{ monitors.filter(m=>m.paused!==1).length > 0 ? Math.round(monitors.filter(m=>m.paused!==1&&m.status==='UP').length / monitors.filter(m=>m.paused!==1).length * 100) : 0 }}%</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1">UPTIME</p>
+                            <p class="text-2xl font-bold text-emerald-500 dark:text-emerald-400 font-mono">{{ monitors.filter(m=>m.paused!==1).length > 0 ? Math.round(monitors.filter(m=>m.paused!==1&&m.status==='UP').length / monitors.filter(m=>m.paused!==1).length * 100) : 0 }}%</p>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-500 font-mono mb-1">INCIDENTS</p>
-                            <p class="text-2xl font-bold text-white font-mono">{{ monitors.filter(m=>m.status==='DOWN').length }}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1">INCIDENTS</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white font-mono">{{ monitors.filter(m=>m.status==='DOWN').length }}</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- 探测中 -->
                 <div v-else-if="hasRetrying && !hasDown && !error"
-                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-yellow-400/15">
-                    <div class="absolute inset-0 bg-gradient-to-br from-yellow-950/30 via-yellow-900/5 to-transparent"></div>
-                    <div class="absolute top-0 right-0 w-80 h-80 bg-yellow-500/[0.04] rounded-full blur-[80px] hero-glow"></div>
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-yellow-200 dark:border-yellow-400/15">
+                    <div class="absolute inset-0 bg-gradient-to-br from-yellow-50 via-white to-white dark:from-yellow-950/30 dark:via-yellow-900/5 dark:to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-yellow-500/[0.03] dark:bg-yellow-500/[0.04] rounded-full blur-[80px] hero-glow"></div>
                     <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div class="flex items-start gap-5">
-                            <div class="w-14 h-14 rounded-2xl bg-yellow-400/15 flex items-center justify-center shrink-0 border border-yellow-400/20">
-                                <svg class="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <div class="w-14 h-14 rounded-2xl bg-yellow-100 dark:bg-yellow-400/15 flex items-center justify-center shrink-0 border border-yellow-200 dark:border-yellow-400/20">
+                                <svg class="w-7 h-7 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">正在探测异常站点</h1>
-                                <p class="text-sm text-yellow-400/70 font-mono tracking-wider">INVESTIGATING POTENTIAL ISSUE</p>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1">正在探测异常站点</h1>
+                                <p class="text-sm text-yellow-600/70 dark:text-yellow-400/70 font-mono tracking-wider">INVESTIGATING POTENTIAL ISSUE</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/10 border border-yellow-400/20">
+                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-200 dark:border-yellow-400/20">
                             <span class="relative flex h-2 w-2">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-400"></span>
@@ -269,22 +302,22 @@
 
                 <!-- 服务故障 -->
                 <div v-else-if="hasDown && !error"
-                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-red-500/15 glow-red">
-                    <div class="absolute inset-0 bg-gradient-to-br from-red-950/40 via-red-900/10 to-transparent"></div>
-                    <div class="absolute top-0 right-0 w-80 h-80 bg-red-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-red-200 dark:border-red-500/15 glow-red">
+                    <div class="absolute inset-0 bg-gradient-to-br from-red-50 via-white to-white dark:from-red-950/40 dark:via-red-900/10 dark:to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-red-500/[0.03] dark:bg-red-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
                     <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div class="flex items-start gap-5">
-                            <div class="w-14 h-14 rounded-2xl bg-red-500/15 flex items-center justify-center shrink-0 border border-red-500/20">
-                                <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-500/20">
+                                <svg class="w-7 h-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">部分服务出现异常</h1>
-                                <p class="text-sm text-red-400/70 font-mono tracking-wider">SERVICE DISRUPTION DETECTED</p>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1">部分服务出现异常</h1>
+                                <p class="text-sm text-red-600/70 dark:text-red-400/70 font-mono tracking-wider">SERVICE DISRUPTION DETECTED</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20">
+                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-red-100 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
                             <span class="relative flex h-2 w-2">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-red-400"></span>
@@ -295,14 +328,14 @@
                 </div>
 
                 <!-- API 错误 -->
-                <div v-if="error" class="mt-4 glass rounded-2xl p-5 flex items-center gap-4 border-l-4 border-orange-500">
-                    <div class="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div v-if="error" class="mt-4 glass rounded-2xl p-5 flex items-center gap-4 border-l-4 border-orange-400 dark:border-orange-500">
+                    <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/15 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-orange-500 dark:text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
                         </svg>
                     </div>
-                    <p class="text-sm text-orange-300 flex-1">{{ error }}</p>
-                    <button @click="fetchMonitors" class="text-xs px-4 py-2 rounded-xl bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-all duration-300 cursor-pointer font-bold font-mono tracking-wide">RETRY</button>
+                    <p class="text-sm text-orange-600 dark:text-orange-300 flex-1">{{ error }}</p>
+                    <button @click="fetchMonitors" class="text-xs px-4 py-2 rounded-xl bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-500/25 transition-all duration-300 cursor-pointer font-bold font-mono tracking-wide">RETRY</button>
                 </div>
             </div>
 
@@ -312,13 +345,13 @@
             </div>
 
             <!-- ▸ 无监控项 -->
-            <div v-else-if="!loading && monitors.length === 0" class="text-center py-24 glass rounded-3xl border border-dashed border-white/[0.06] fade-up-d2">
-                <div class="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <div v-else-if="!loading && monitors.length === 0" class="text-center py-24 glass rounded-3xl border border-dashed border-slate-200 dark:border-white/[0.06] fade-up-d2">
+                <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-white/[0.03] flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-slate-300 dark:text-slate-700" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/>
                     </svg>
                 </div>
-                <p class="text-slate-600 font-mono text-sm tracking-widest">NO MONITORS CONFIGURED</p>
+                <p class="text-slate-400 dark:text-slate-600 font-mono text-sm tracking-widest">NO MONITORS CONFIGURED</p>
             </div>
 
             <!-- ▸ 监控列表 -->
@@ -327,9 +360,9 @@
                 <div class="flex items-center justify-between mb-5">
                     <div class="flex items-center gap-3">
                         <div class="w-1 h-5 rounded-full bg-emerald-500"></div>
-                        <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">服务列表</h2>
+                        <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">服务列表</h2>
                     </div>
-                    <div class="flex items-center gap-2 text-xs font-mono text-slate-600">
+                    <div class="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-600">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
                         {{ monitors.filter(m=>m.paused!==1).length }} 个活跃监控
                     </div>
@@ -367,7 +400,7 @@
                                 <!-- 名称 + URL -->
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2.5 mb-1">
-                                        <h3 class="font-bold text-white text-[15px] truncate group-hover:text-emerald-300 transition-colors duration-300">{{ m.name }}</h3>
+                                        <h3 class="font-bold text-slate-900 dark:text-white text-[15px] truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors duration-300">{{ m.name }}</h3>
                                         <span v-if="m.status === 'DOWN'"
                                             class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-red-500/15 text-red-400 border border-red-500/20 tracking-wider">DOWN</span>
                                         <span v-if="m.status === 'RETRYING'"
@@ -376,7 +409,7 @@
                                             class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-slate-800 text-slate-500 border border-slate-700 tracking-wider">PAUSED</span>
                                     </div>
                                     <a :href="m.url" target="_blank" rel="noopener"
-                                        class="text-xs font-mono text-slate-600 hover:text-emerald-400 transition-colors duration-300 truncate flex items-center gap-1.5 max-w-sm cursor-pointer">
+                                        class="text-xs font-mono text-slate-400 dark:text-slate-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-300 truncate flex items-center gap-1.5 max-w-sm cursor-pointer">
                                         {{ m.url }}
                                         <svg class="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity duration-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
@@ -405,7 +438,7 @@
                                 </div>
 
                                 <!-- 最后检测 -->
-                                <span class="text-[11px] font-mono text-slate-600 whitespace-nowrap">{{ formatDate(m.last_check) }}</span>
+                                <span class="text-[11px] font-mono text-slate-400 dark:text-slate-600 whitespace-nowrap">{{ formatDate(m.last_check) }}</span>
 
                                 <!-- 状态徽章 -->
                                 <span class="px-3 py-1.5 rounded-lg text-[10px] font-bold font-mono tracking-[0.15em] border transition-all duration-300"
@@ -426,18 +459,18 @@
         </main>
 
         <!-- 底部 -->
-        <footer class="border-t border-white/[0.04] py-8 mt-8">
-            <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-700">
+        <footer class="border-t border-black/[0.06] dark:border-white/[0.04] py-8 mt-8">
+            <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-700">
                 <div class="flex items-center gap-2">
                     <div class="w-1 h-1 rounded-full bg-emerald-500/40"></div>
-                    <p>&copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-slate-400 transition-colors duration-300">念舒</a>. All Rights Reserved.</p>
+                    <p>&copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-slate-700 dark:hover:text-slate-400 transition-colors duration-300">念舒</a>. All Rights Reserved.</p>
                 </div>
                 <div class="flex items-center gap-5 font-mono">
-                    <span class="flex items-center gap-1.5 text-slate-600">
+                    <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/></svg>
                         Cloudflare Edge
                     </span>
-                    <a href="/admin" class="flex items-center gap-1.5 text-slate-600 hover:text-slate-400 transition-colors duration-300 cursor-pointer">
+                    <a href="/admin" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600 hover:text-slate-700 dark:hover:text-slate-400 transition-colors duration-300 cursor-pointer">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
                         Admin
                     </a>
