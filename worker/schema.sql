@@ -18,8 +18,12 @@ CREATE TABLE monitors (
   paused INTEGER DEFAULT 0,
   check_ssl INTEGER DEFAULT 1,             -- 是否检测 SSL 证书到期 (1=开, 0=关)
   check_domain INTEGER DEFAULT 1,          -- 是否检测域名到期 (1=开, 0=关)
-  alert_silence_hours INTEGER DEFAULT 24,  -- 告警静默窗口（小时），同一问题在此时间内只报一次
-  last_alert_at TEXT,                      -- 最近一次告警发送时间（ISO 字符串）
+  alert_silence_uptime INTEGER DEFAULT 24,  -- 可用性告警静默窗口（小时）
+  alert_silence_ssl INTEGER DEFAULT 24,     -- SSL 证书告警静默窗口（小时）
+  alert_silence_domain INTEGER DEFAULT 24,  -- 域名到期告警静默窗口（小时）
+  last_alert_uptime TEXT,                   -- 可用性最近告警时间
+  last_alert_ssl TEXT,                      -- SSL 证书最近告警时间
+  last_alert_domain TEXT,                   -- 域名到期最近告警时间
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

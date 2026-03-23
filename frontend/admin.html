@@ -318,17 +318,7 @@
                                 <input type="checkbox" v-model="newMonitor.check_domain" class="w-4 h-4 rounded accent-blue-500">
                                 <i class="fas fa-globe text-xs text-gray-400"></i> 检测域名到期
                             </label>
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">告警静默窗口</label>
-                                <select v-model="newMonitor.alert_silence_hours"
-                                    class="border border-gray-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm dark:bg-slate-900 dark:text-white focus:border-blue-500 outline-none">
-                                    <option value="1">1 小时</option>
-                                    <option value="4">4 小时</option>
-                                    <option value="12">12 小时</option>
-                                    <option value="24">24 小时</option>
-                                    <option value="72">72 小时</option>
-                                </select>
-                            </div>
+                            <span class="text-xs text-gray-400">告警频率可在添加后通过「配置」按鈕调整</span>
                         </div>
                         <div class="md:col-span-3 flex items-end">
                             <button @click="addMonitor" :disabled="submitting"
@@ -637,17 +627,24 @@
                     <!-- 告警静默窗口 -->
                     <div>
                         <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">告警通知频率</h4>
-                        <p class="text-xs text-gray-400 mb-3">同一问题在窗口时间内只发送一次告警，避免频繁打扰。</p>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label v-for="opt in silenceOptions" :key="opt.value"
-                                class="flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all text-center"
-                                :class="configForm.alert_silence_hours === opt.value
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                                    : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:border-blue-300'">
-                                <input type="radio" :value="opt.value" v-model="configForm.alert_silence_hours" class="sr-only">
-                                <span class="text-lg font-bold">{{ opt.label }}</span>
-                                <span class="text-[10px] mt-0.5">{{ opt.sub }}</span>
-                            </label>
+                        <p class="text-xs text-gray-400 mb-4">同一问题在窗口时间内只发送一次告警。每项独立计时。</p>
+                        <div class="space-y-4">
+                            <div v-for="item in silenceItems" :key="item.key">
+                                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
+                                    <i :class="item.icon + ' w-3'"></i>
+                                    <span>{{ item.label }}</span>
+                                </div>
+                                <div class="grid grid-cols-5 gap-1.5">
+                                    <label v-for="opt in silenceOptions" :key="opt.value"
+                                        class="flex flex-col items-center justify-center py-2 rounded-lg border-2 cursor-pointer transition-all text-center"
+                                        :class="configForm[item.key] === opt.value
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                                            : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:border-blue-300'">
+                                        <input type="radio" :value="opt.value" v-model="configForm[item.key]" class="sr-only">
+                                        <span class="text-sm font-bold">{{ opt.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -737,14 +734,19 @@
                 // 配置面板
                 const showConfig = ref(false);
                 const configTarget = ref(null);
-                const configForm = ref({ check_ssl: true, check_domain: true, alert_silence_hours: 24 });
+                const configForm = ref({ check_ssl: true, check_domain: true, alert_silence_uptime: 24, alert_silence_ssl: 24, alert_silence_domain: 24 });
                 const configSaving = ref(false);
                 const silenceOptions = [
-                    { value: 1,  label: '1h',  sub: '每小时' },
-                    { value: 4,  label: '4h',  sub: '每4小时' },
-                    { value: 12, label: '12h', sub: '半天' },
-                    { value: 24, label: '24h', sub: '每天' },
-                    { value: 72, label: '72h', sub: '每3天' },
+                    { value: 1,  label: '1h'  },
+                    { value: 4,  label: '4h'  },
+                    { value: 12, label: '12h' },
+                    { value: 24, label: '24h' },
+                    { value: 72, label: '72h' },
+                ];
+                const silenceItems = [
+                    { key: 'alert_silence_uptime', label: '可用性告警', icon: 'fas fa-heartbeat text-red-400' },
+                    { key: 'alert_silence_ssl',    label: 'SSL 证书告警', icon: 'fas fa-lock text-blue-400' },
+                    { key: 'alert_silence_domain', label: '域名到期告警', icon: 'fas fa-globe text-green-400' },
                 ];
 
                 const openConfig = (m) => {
@@ -752,7 +754,9 @@
                     configForm.value = {
                         check_ssl: m.check_ssl !== 0,
                         check_domain: m.check_domain !== 0,
-                        alert_silence_hours: m.alert_silence_hours ?? 24,
+                        alert_silence_uptime:  m.alert_silence_uptime  ?? 24,
+                        alert_silence_ssl:     m.alert_silence_ssl     ?? 24,
+                        alert_silence_domain:  m.alert_silence_domain  ?? 24,
                     };
                     showConfig.value = true;
                 };
@@ -762,9 +766,11 @@
                     configSaving.value = true;
                     try {
                         const body = {
-                            check_ssl: configForm.value.check_ssl ? 1 : 0,
-                            check_domain: configForm.value.check_domain ? 1 : 0,
-                            alert_silence_hours: Number(configForm.value.alert_silence_hours),
+                            check_ssl:             configForm.value.check_ssl ? 1 : 0,
+                            check_domain:          configForm.value.check_domain ? 1 : 0,
+                            alert_silence_uptime:  Number(configForm.value.alert_silence_uptime),
+                            alert_silence_ssl:     Number(configForm.value.alert_silence_ssl),
+                            alert_silence_domain:  Number(configForm.value.alert_silence_domain),
                         };
                         const res = await authFetch(`${API_BASE}/monitors/${configTarget.value.id}/config`, {
                             method: 'PATCH',
@@ -1035,7 +1041,7 @@
                     loading, submitting, inputPassword, isAuthenticated, error,
                     toasts, confirmModal,
                     stats, sparkline, uptimeStats,
-                    showConfig, configTarget, configForm, configSaving, silenceOptions,
+                    showConfig, configTarget, configForm, configSaving, silenceOptions, silenceItems,
                     login, logout,
                     addMonitor, deleteMonitor, viewLogs, fetchMonitors,
                     togglePause, handleConfirm, openConfig, saveConfig,
