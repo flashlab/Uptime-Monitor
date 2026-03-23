@@ -46,6 +46,15 @@ interface DingTalkResult {
   errmsg: string;
 }
 
+interface NotificationChannel {
+  id: number;
+  type: 'dingtalk' | 'wecom' | 'feishu' | 'telegram' | 'webhook';
+  name: string;
+  enabled: number;
+  config: string; // JSON string
+  created_at: string;
+}
+
 type Bindings = {
   DB: D1Database;
   DINGTALK_ACCESS_TOKEN: string;
@@ -174,6 +183,10 @@ app.patch('/monitors/:id/config', async (c) => {
   const id = c.req.param('id');
   try {
     const body = await c.req.json<{
+      name?: string;
+      url?: string;
+      keyword?: string;
+      user_agent?: string;
       check_ssl?: number;
       check_domain?: number;
       alert_silence_hours?: number;
@@ -182,6 +195,17 @@ app.patch('/monitors/:id/config', async (c) => {
     const fields: string[] = [];
     const values: unknown[] = [];
 
+    // 基础信息字段
+    if (body.name !== undefined && body.name.trim()) { fields.push('name = ?'); values.push(body.name.trim()); }
+    if (body.url !== undefined && body.url.trim()) { fields.push('url = ?'); values.push(body.url.trim()); }
+    if (body.keyword !== undefined) { fields.push('keyword = ?'); values.push(body.keyword || null); }
+    if (body.user_agent !== undefined) { fields.push('user_agent = ?'); values.push(body.user_agent || null); }
+    if ((body as any).interval !== undefined) {
+      const iv = Number((body as any).interval);
+      if (!isNaN(iv) && iv >= 60) { fields.push('interval = ?'); values.push(iv); }
+    }
+
+    // 功能开关与静默窗口
     const silenceMap: Record<string, string> = {
       check_ssl: 'check_ssl',
       check_domain: 'check_domain',
@@ -256,12 +280,122 @@ app.get('/monitors/:id/logs', async (c) => {
   }
 });
 
-// 测试钉钉通知
+// ============================================================
+// 通知渠道管理 (CRUD + Test)
+// ============================================================
+
+// 脱敏：隐藏密钥中间部分
+function maskSecret(val: string): string {
+  if (!val || val.length <= 8) return '****';
+  return val.slice(0, 4) + '****' + val.slice(-4);
+}
+
+function maskChannelConfig(channel: NotificationChannel): NotificationChannel {
+  try {
+    const cfg = JSON.parse(channel.config) as Record<string, unknown>;
+    const masked: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(cfg)) {
+      if (typeof v === 'string' && ['secret', 'token', 'access_token', 'bot_token', 'key'].some(s => k.toLowerCase().includes(s))) {
+        masked[k] = maskSecret(v);
+      } else {
+        masked[k] = v;
+      }
+    }
+    return { ...channel, config: JSON.stringify(masked) };
+  } catch { return channel; }
+}
+
+// 获取所有通知渠道（脱敏返回）
+app.get('/notification-channels', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT * FROM notification_channels ORDER BY created_at DESC'
+    ).all<NotificationChannel>();
+    return c.json((results || []).map(maskChannelConfig));
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 添加通知渠道
+app.post('/notification-channels', async (c) => {
+  try {
+    const body = await c.req.json<{ type: string; name: string; config: Record<string, unknown>; enabled?: number }>();
+    if (!body.type || !body.name || !body.config) {
+      return c.json({ error: 'Missing required fields: type, name, config' }, 400);
+    }
+    const validTypes = ['dingtalk', 'wecom', 'feishu', 'telegram', 'webhook'];
+    if (!validTypes.includes(body.type)) {
+      return c.json({ error: `Invalid type. Valid: ${validTypes.join(', ')}` }, 400);
+    }
+    await c.env.DB.prepare(
+      'INSERT INTO notification_channels (type, name, enabled, config) VALUES (?, ?, ?, ?)'
+    ).bind(body.type, body.name, body.enabled ?? 1, JSON.stringify(body.config)).run();
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 更新通知渠道
+app.patch('/notification-channels/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const body = await c.req.json<{ name?: string; enabled?: number; config?: Record<string, unknown> }>();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
+    if (body.enabled !== undefined) { fields.push('enabled = ?'); values.push(body.enabled); }
+    if (body.config !== undefined) { fields.push('config = ?'); values.push(JSON.stringify(body.config)); }
+    if (fields.length === 0) return c.json({ error: 'No valid fields' }, 400);
+    values.push(id);
+    await c.env.DB.prepare(
+      `UPDATE notification_channels SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 删除通知渠道
+app.delete('/notification-channels/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    await c.env.DB.prepare('DELETE FROM notification_channels WHERE id = ?').bind(id).run();
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 测试指定通知渠道
+app.post('/notification-channels/:id/test', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const channel = await c.env.DB.prepare(
+      'SELECT * FROM notification_channels WHERE id = ?'
+    ).bind(id).first<NotificationChannel>();
+    if (!channel) return c.json({ error: 'Channel not found' }, 404);
+    const mockMonitor = { name: 'Test Monitor', url: 'https://example.com' } as Monitor;
+    const sent = await sendToChannel(channel, mockMonitor, 'DOWN', '这是一条测试消息，用于验证通知渠道是否配置正确。');
+    return c.json({ success: sent });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 保留旧的 test-alert 接口向后兼容
 app.post('/test-alert', async (c) => {
   try {
     const mockMonitor = { name: 'Test Monitor', url: 'https://example.com' } as Monitor;
-    const result = await sendDingTalkAlert(c.env, mockMonitor, 'DOWN', '这是一条测试消息，用于验证 Markdown 格式是否生效。');
-    return c.json({ success: true, dingtalk_response: result });
+    const sent = await sendAlertToAllChannels(c.env, mockMonitor, 'DOWN', '这是一条测试消息，用于验证通知渠道配置。');
+    return c.json({ success: sent });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     return c.json({ error: msg }, 500);
@@ -408,7 +542,7 @@ async function performCheck(monitor: Monitor, env: Bindings) {
       } else {
         newStatus = 'DOWN';
         if (!silenced) {
-          const sent = await sendDingTalkAlert(env, monitor, 'DOWN', `错误原因: ${reason}`);
+          const sent = await sendAlertToAllChannels(env, monitor, 'DOWN', `错误原因: ${reason}`);
           if (sent) {
             await env.DB.prepare('UPDATE monitors SET last_alert_uptime = ? WHERE id = ?')
               .bind(new Date().toISOString(), monitor.id).run();
@@ -424,7 +558,7 @@ async function performCheck(monitor: Monitor, env: Bindings) {
     }
   } else {
     if (monitor.status === 'DOWN') {
-      const sent = await sendDingTalkAlert(env, monitor, 'UP', `响应耗时: ${latency}ms`);
+      const sent = await sendAlertToAllChannels(env, monitor, 'UP', `响应耗时: ${latency}ms`);
       if (sent) {
         await env.DB.prepare('UPDATE monitors SET last_alert_uptime = ? WHERE id = ?')
           .bind(new Date().toISOString(), monitor.id).run();
@@ -557,7 +691,7 @@ async function checkExpiryAlerts(env: Bindings) {
         }
 
         if (detail) {
-          const sent = await sendDingTalkAlert(env, monitor as Monitor, 'DOWN', detail);
+          const sent = await sendAlertToAllChannels(env, monitor as Monitor, 'DOWN', detail);
           if (sent) {
             await env.DB.prepare(`UPDATE monitors SET ${check.lastAlertField} = ? WHERE id = ?`)
               .bind(new Date().toISOString(), monitor.id).run();
@@ -574,84 +708,236 @@ async function checkExpiryAlerts(env: Bindings) {
 }
 
 // ============================================================
-// 钉钉机器人通知（Item 1: 移除硬编码密钥）
+// 多渠道通知分发
 // ============================================================
 
-async function sendDingTalkAlert(
+// 构建通用通知消息文本
+function buildAlertMessage(monitor: Pick<Monitor, 'name' | 'url'>, type: 'DOWN' | 'UP', detail: string) {
+  const isDown = type === 'DOWN';
+  const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
+  const statusText = isDown ? '故障' : '正常';
+  const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  return { title, statusText, time, isDown, detail, monitorName: monitor.name, monitorUrl: monitor.url };
+}
+
+// 统一分发：优先从 DB 读取渠道，回退到环境变量钉钉
+async function sendAlertToAllChannels(
   env: Bindings,
   monitor: Pick<Monitor, 'name' | 'url'>,
   type: 'DOWN' | 'UP',
   detail: string
 ): Promise<boolean> {
-  // Item 1: 仅从环境变量读取，无硬编码密钥
-  const accessToken = env.DINGTALK_ACCESS_TOKEN;
-  const secret = env.DINGTALK_SECRET;
+  let anySent = false;
 
-  if (!accessToken || !secret) {
-    console.warn('DingTalk not configured: DINGTALK_ACCESS_TOKEN or DINGTALK_SECRET missing.');
+  // 1. 从 DB 读取所有启用的渠道
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM notification_channels WHERE enabled = 1'
+    ).all<NotificationChannel>();
+    if (results && results.length > 0) {
+      const tasks = results.map(ch => sendToChannel(ch, monitor, type, detail));
+      const outcomes = await Promise.allSettled(tasks);
+      anySent = outcomes.some(o => o.status === 'fulfilled' && o.value === true);
+      return anySent;
+    }
+  } catch (e) {
+    console.error('Failed to read notification channels from DB:', e);
+  }
+
+  // 2. 回退：环境变量钉钉配置
+  if (env.DINGTALK_ACCESS_TOKEN && env.DINGTALK_SECRET) {
+    const fallbackChannel: NotificationChannel = {
+      id: 0, type: 'dingtalk', name: 'ENV DingTalk', enabled: 1,
+      config: JSON.stringify({ access_token: env.DINGTALK_ACCESS_TOKEN, secret: env.DINGTALK_SECRET }),
+      created_at: '',
+    };
+    return sendToChannel(fallbackChannel, monitor, type, detail);
+  }
+
+  console.warn('No notification channels configured.');
+  return false;
+}
+
+// 按类型路由到对应发送函数
+async function sendToChannel(
+  channel: NotificationChannel,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const cfg = JSON.parse(channel.config) as Record<string, string>;
+  try {
+    switch (channel.type) {
+      case 'dingtalk': return await sendDingTalk(cfg, monitor, type, detail);
+      case 'wecom':    return await sendWeCom(cfg, monitor, type, detail);
+      case 'feishu':   return await sendFeishu(cfg, monitor, type, detail);
+      case 'telegram': return await sendTelegram(cfg, monitor, type, detail);
+      case 'webhook':  return await sendWebhook(cfg, monitor, type, detail);
+      default:
+        console.warn(`Unknown channel type: ${channel.type}`);
+        return false;
+    }
+  } catch (e) {
+    console.error(`Failed to send via ${channel.type} (${channel.name}):`, e);
     return false;
   }
+}
+
+// ── 钉钉 ──────────────────────────────────────────────────────
+async function sendDingTalk(
+  cfg: Record<string, string>,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const { access_token, secret } = cfg;
+  if (!access_token || !secret) { console.warn('DingTalk config missing.'); return false; }
 
   const timestamp = Date.now();
   const stringToSign = `${timestamp}\n${secret}`;
-
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signature = await crypto.subtle.sign('HMAC', key, enc.encode(stringToSign));
   const signBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
   const signEncoded = encodeURIComponent(signBase64);
 
-  const webhookUrl = `https://oapi.dingtalk.com/robot/send?access_token=${accessToken}&timestamp=${timestamp}&sign=${signEncoded}`;
+  const webhookUrl = `https://oapi.dingtalk.com/robot/send?access_token=${access_token}&timestamp=${timestamp}&sign=${signEncoded}`;
+  const msg = buildAlertMessage(monitor, type, detail);
+  const color = msg.isDown ? '#ff0000' : '#008000';
 
-  const isDown = type === 'DOWN';
-  const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
-  const color = isDown ? '#ff0000' : '#008000';
-  const statusText = isDown ? '故障' : '正常';
-  const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const markdownText = `## ${msg.title}\n\n**监控对象**: ${msg.monitorName}\n\n**监控地址**: [点击访问](${msg.monitorUrl})\n\n**当前状态**: <font color="${color}">${msg.statusText}</font>\n\n**详细信息**: ${msg.detail}\n\n---\n📅 告警时间: ${msg.time}`;
 
-  const markdownText = `
-## ${title}
+  const resp = await fetch(webhookUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ msgtype: 'markdown', markdown: { title: msg.title, text: markdownText } }),
+  });
+  const result = await resp.json<DingTalkResult>();
+  if (result.errcode !== 0) { console.error('DingTalk API Error:', result); return false; }
+  return true;
+}
 
-**监控对象**: ${monitor.name}
+// ── 企业微信 ──────────────────────────────────────────────────
+async function sendWeCom(
+  cfg: Record<string, string>,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const { key } = cfg;
+  if (!key) { console.warn('WeCom config missing.'); return false; }
 
-**监控地址**: [点击访问](${monitor.url})
+  const webhookUrl = `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${key}`;
+  const msg = buildAlertMessage(monitor, type, detail);
+  const content = `${msg.title}\n> **监控对象**: ${msg.monitorName}\n> **监控地址**: [点击访问](${msg.monitorUrl})\n> **当前状态**: <font color="${msg.isDown ? 'warning' : 'info'}">${msg.statusText}</font>\n> **详细信息**: ${msg.detail}\n> 📅 告警时间: ${msg.time}`;
 
-**当前状态**: <font color="${color}">${statusText}</font>
+  const resp = await fetch(webhookUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ msgtype: 'markdown', markdown: { content } }),
+  });
+  const result = await resp.json<{ errcode: number }>();
+  if (result.errcode !== 0) { console.error('WeCom API Error:', result); return false; }
+  return true;
+}
 
-**详细信息**: ${detail}
+// ── 飞书 ──────────────────────────────────────────────────────
+async function sendFeishu(
+  cfg: Record<string, string>,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const { webhook_url, secret } = cfg;
+  if (!webhook_url) { console.warn('Feishu config missing.'); return false; }
 
----
-📅 告警时间: ${time}
-  `.trim();
+  let url = webhook_url;
+  // 飞书签名
+  if (secret) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const stringToSign = `${timestamp}\n${secret}`;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(stringToSign), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const signature = await crypto.subtle.sign('HMAC', key, enc.encode(''));
+    const sign = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    const msg = buildAlertMessage(monitor, type, detail);
+    const content = `${msg.title}\n\n监控对象: ${msg.monitorName}\n监控地址: ${msg.monitorUrl}\n当前状态: ${msg.statusText}\n详细信息: ${msg.detail}\n告警时间: ${msg.time}`;
 
+    const resp = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timestamp: String(timestamp), sign, msg_type: 'text', content: { text: content } }),
+    });
+    const result = await resp.json<{ code: number }>();
+    if (result.code !== 0) { console.error('Feishu API Error:', result); return false; }
+    return true;
+  }
+
+  const msg = buildAlertMessage(monitor, type, detail);
+  const content = `${msg.title}\n\n监控对象: ${msg.monitorName}\n监控地址: ${msg.monitorUrl}\n当前状态: ${msg.statusText}\n详细信息: ${msg.detail}\n告警时间: ${msg.time}`;
+
+  const resp = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ msg_type: 'text', content: { text: content } }),
+  });
+  const result = await resp.json<{ code: number }>();
+  if (result.code !== 0) { console.error('Feishu API Error:', result); return false; }
+  return true;
+}
+
+// ── Telegram ──────────────────────────────────────────────────
+async function sendTelegram(
+  cfg: Record<string, string>,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const { bot_token, chat_id } = cfg;
+  if (!bot_token || !chat_id) { console.warn('Telegram config missing.'); return false; }
+
+  const msg = buildAlertMessage(monitor, type, detail);
+  const emoji = msg.isDown ? '🔴' : '🟢';
+  const text = `${emoji} <b>${msg.title}</b>\n\n<b>监控对象:</b> ${msg.monitorName}\n<b>监控地址:</b> <a href="${msg.monitorUrl}">${msg.monitorUrl}</a>\n<b>当前状态:</b> ${msg.statusText}\n<b>详细信息:</b> ${msg.detail}\n\n📅 <i>${msg.time}</i>`;
+
+  const apiUrl = `https://api.telegram.org/bot${bot_token}/sendMessage`;
+  const resp = await fetch(apiUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+  });
+  const result = await resp.json<{ ok: boolean }>();
+  if (!result.ok) { console.error('Telegram API Error:', result); return false; }
+  return true;
+}
+
+// ── 自定义 Webhook ────────────────────────────────────────────
+async function sendWebhook(
+  cfg: Record<string, string>,
+  monitor: Pick<Monitor, 'name' | 'url'>,
+  type: 'DOWN' | 'UP',
+  detail: string
+): Promise<boolean> {
+  const { url, method, headers: headersStr } = cfg;
+  if (!url) { console.warn('Webhook config missing.'); return false; }
+
+  const msg = buildAlertMessage(monitor, type, detail);
   const payload = {
-    msgtype: 'markdown',
-    markdown: { title, text: markdownText },
+    event: type === 'DOWN' ? 'monitor.down' : 'monitor.up',
+    monitor: { name: msg.monitorName, url: msg.monitorUrl },
+    status: msg.statusText,
+    detail: msg.detail,
+    timestamp: msg.time,
   };
 
-  try {
-    const resp = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const result = await resp.json<DingTalkResult>();
-    if (result.errcode !== 0) {
-      console.error('DingTalk API Error:', result);
-      return false;
-    }
-    return true;
-  } catch (e: unknown) {
-    console.error('Failed to send DingTalk alert:', e);
-    return false;
+  let parsedHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (headersStr) {
+    try { parsedHeaders = { ...parsedHeaders, ...JSON.parse(headersStr) }; } catch { /* ignore */ }
   }
+
+  const resp = await fetch(url, {
+    method: (method || 'POST').toUpperCase(),
+    headers: parsedHeaders,
+    body: JSON.stringify(payload),
+  });
+  return resp.ok;
 }
+
 
 // ============================================================
 // 域名 / 证书信息更新逻辑

@@ -36,3 +36,14 @@ CREATE TABLE logs (
   reason TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+DROP TABLE IF EXISTS notification_channels;
+
+CREATE TABLE notification_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,              -- dingtalk / wecom / feishu / telegram / webhook
+  name TEXT NOT NULL,              -- 用户自定义名称
+  enabled INTEGER DEFAULT 1,      -- 启用/禁用
+  config TEXT NOT NULL DEFAULT '{}', -- JSON 格式的渠道配置
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

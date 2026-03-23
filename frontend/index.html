@@ -16,10 +16,6 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: {
-                        surface: '#1E293B',
-                        'surface-2': '#334155',
-                    },
                     fontFamily: {
                         sans: ['"Plus Jakarta Sans"', 'sans-serif'],
                         mono: ['"JetBrains Mono"', 'monospace'],
@@ -28,84 +24,161 @@
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Plus Jakarta Sans', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* OLED 背景 */
-        body { background: #0F172A; }
+        /* === 极致 OLED 深空背景 === */
+        body { background: #030712; }
 
-        /* 绿色光晕 */
-        .glow-green { box-shadow: 0 0 12px rgba(34,197,94,0.35); }
-        .glow-red   { box-shadow: 0 0 12px rgba(239,68,68,0.35); }
+        /* 科技网格背景 */
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
 
-        /* 卡片玻璃 */
+        /* 玻璃态 */
         .glass {
-            background: rgba(30,41,59,0.7);
-            backdrop-filter: blur(12px);
+            background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(20px) saturate(1.8);
             border: 1px solid rgba(255,255,255,0.06);
         }
+        .glass-card {
+            background: rgba(15,23,42,0.45);
+            backdrop-filter: blur(16px) saturate(1.6);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            background: rgba(15,23,42,0.65);
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+
+        /* 光晕效果 */
+        .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.25), 0 0 60px rgba(34,197,94,0.08); }
+        .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.25), 0 0 60px rgba(239,68,68,0.08); }
 
         /* 状态脉冲 */
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
         @keyframes pulse-dot {
             0%,100% { opacity: 1; transform: scale(1); }
-            50%      { opacity: 0.4; transform: scale(1.15); }
+            50%     { opacity: 0.5; transform: scale(1.2); }
         }
         .pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+        .pulse-ring {
+            animation: pulse-ring 2s ease-out infinite;
+            position: absolute; inset: -3px; border-radius: 50%;
+        }
+
+        /* 英雄区呼吸光 */
+        @keyframes hero-glow {
+            0%,100% { opacity: 0.5; }
+            50%     { opacity: 1; }
+        }
+        .hero-glow { animation: hero-glow 4s ease-in-out infinite; }
 
         /* 进入动画 */
         @keyframes fade-up {
-            from { opacity: 0; transform: translateY(16px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .fade-up { animation: fade-up 0.5s ease-out forwards; }
-        .fade-up-d1 { animation: fade-up 0.5s 0.08s ease-out both; }
-        .fade-up-d2 { animation: fade-up 0.5s 0.16s ease-out both; }
-        .fade-up-d3 { animation: fade-up 0.5s 0.24s ease-out both; }
+        .fade-up    { animation: fade-up 0.6s ease-out forwards; }
+        .fade-up-d1 { animation: fade-up 0.6s 0.1s ease-out both; }
+        .fade-up-d2 { animation: fade-up 0.6s 0.2s ease-out both; }
+        .fade-up-d3 { animation: fade-up 0.6s 0.3s ease-out both; }
+
+        /* 状态条左边框 */
+        .status-line { position: relative; }
+        .status-line::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 12px; bottom: 12px; width: 3px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+        .status-line-green::before { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+        .status-line-red::before   { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+        .status-line-yellow::before { background: #eab308; box-shadow: 0 0 8px rgba(234,179,8,0.4); }
+        .status-line-gray::before  { background: #475569; }
 
         /* 滚动条 */
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+        /* 浮动粒子背景 */
+        @keyframes float {
+            0%,100% { transform: translate(0,0) rotate(0deg); }
+            25% { transform: translate(10px,-15px) rotate(1deg); }
+            50% { transform: translate(-5px,-25px) rotate(-1deg); }
+            75% { transform: translate(-15px,-10px) rotate(0.5deg); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .hero-banner { padding: 1.5rem !important; }
+            .monitor-meta { flex-wrap: wrap; gap: 0.5rem !important; }
+        }
 
         @media (prefers-reduced-motion: reduce) {
-            *, .fade-up, .fade-up-d1, .fade-up-d2, .fade-up-d3 { animation: none !important; transition: none !important; }
+            * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
 
-<body class="min-h-screen text-slate-200">
-    <!-- 背景光晕装饰 -->
+<body class="min-h-screen text-slate-200 grid-bg">
+    <!-- 多层动态背景光晕 -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div class="absolute -top-40 -right-40 w-[600px] h-[600px] bg-green-600/8 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-blue-600/6 rounded-full blur-3xl"></div>
+        <!-- 主光晕 - 慢速漂移 -->
+        <div class="absolute -top-48 -right-48 w-[800px] h-[800px] bg-emerald-500/[0.07] rounded-full blur-[128px]" style="animation: float 25s ease-in-out infinite"></div>
+        <div class="absolute top-1/2 -left-64 w-[600px] h-[600px] bg-cyan-500/[0.04] rounded-full blur-[100px]" style="animation: float 30s ease-in-out infinite reverse"></div>
+        <div class="absolute -bottom-32 right-1/4 w-[500px] h-[500px] bg-violet-500/[0.03] rounded-full blur-[120px]" style="animation: float 35s ease-in-out infinite 5s"></div>
+        <!-- 顶部渐变遮罩 -->
+        <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-emerald-950/20 to-transparent"></div>
     </div>
 
     <div id="app" class="min-h-screen flex flex-col">
         <!-- 顶部导航 -->
-        <header class="sticky top-0 z-40 border-b border-white/5" style="background:rgba(15,23,42,0.85);backdrop-filter:blur(16px)">
-            <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <!-- Logo SVG -->
-                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="font-semibold text-white tracking-tight">Uptime<span class="text-green-400">.</span>Monitor</span>
-                </div>
+        <header class="sticky top-0 z-40 border-b border-white/[0.04]" style="background:rgba(3,7,18,0.8);backdrop-filter:blur(24px) saturate(1.5)">
+            <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <!-- 刷新指示器 -->
-                    <div class="flex items-center gap-1.5 text-xs text-slate-500">
-                        <svg v-if="loading" class="w-3 h-3 animate-spin text-green-400" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                        </svg>
-                        <span v-else class="w-1.5 h-1.5 rounded-full bg-green-400 pulse-dot"></span>
-                        <span class="font-mono">{{ loading ? '同步中' : '实时' }}</span>
+                    <!-- Logo -->
+                    <div class="relative">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center border border-emerald-500/20">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="font-bold text-white tracking-tight text-[15px]">Uptime<span class="text-emerald-400">.</span>Monitor</span>
+                        <p class="text-[10px] text-slate-600 font-mono -mt-0.5 tracking-wider">STATUS PAGE</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- 实时状态指示 -->
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs">
+                        <div class="relative">
+                            <span v-if="!loading" class="w-1.5 h-1.5 rounded-full bg-emerald-400 block"></span>
+                            <span v-if="!loading" class="pulse-ring bg-emerald-400/30 block"></span>
+                            <svg v-else class="w-3 h-3 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                        </div>
+                        <span class="font-mono text-slate-400">{{ loading ? 'SYNCING' : 'LIVE' }}</span>
                     </div>
                     <!-- 主题切换 -->
-                    <button @click="toggleTheme" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 transition-colors duration-200 cursor-pointer" :title="isDark ? '切换亮色' : '切换暗色'">
+                    <button @click="toggleTheme" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/[0.06] transition-all duration-300 cursor-pointer" :title="isDark ? '切换亮色' : '切换暗色'">
                         <svg v-if="isDark" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/>
                         </svg>
@@ -118,181 +191,253 @@
         </header>
 
         <!-- 主体内容 -->
-        <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-10">
+        <main class="flex-1 max-w-5xl w-full mx-auto px-6 py-12">
 
-            <!-- 页面标题 -->
-            <div class="mb-10 fade-up">
-                <h1 class="text-3xl font-bold text-white tracking-tight mb-1">系统状态</h1>
-                <p class="text-slate-400 text-sm">实时监控所有服务的运行状态与性能指标</p>
-            </div>
-
-            <!-- API 错误 -->
-            <div v-if="error" class="mb-6 glass rounded-xl p-4 flex items-center gap-3 border-l-4 border-orange-500 fade-up">
-                <svg class="w-5 h-5 text-orange-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
-                </svg>
-                <p class="text-sm text-orange-300 flex-1">{{ error }}</p>
-                <button @click="fetchMonitors" class="text-xs px-3 py-1.5 rounded-lg bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors duration-200 cursor-pointer font-medium">重试</button>
-            </div>
-
-            <!-- 整体状态横幅 -->
-            <div class="mb-8 fade-up-d1">
+            <!-- ▸ 英雄状态区 -->
+            <div class="mb-12 fade-up">
                 <!-- 全部正常 -->
-                <div v-if="allUp && !hasRetrying && !error" class="glass rounded-2xl p-6 flex items-center gap-4 border border-green-500/20 glow-green">
-                    <div class="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
-                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-                        </svg>
+                <div v-if="allUp && !hasRetrying && !error"
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-emerald-500/15 glow-green">
+                    <!-- 放射渐变背景 -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-950/40 via-emerald-900/10 to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-emerald-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
+                    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div class="flex items-start gap-5">
+                            <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">所有系统运行正常</h1>
+                                <p class="text-sm text-emerald-400/70 font-mono tracking-wider">ALL SYSTEMS OPERATIONAL</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                                </span>
+                                <span class="text-xs font-bold font-mono text-emerald-400 tracking-widest">OPERATIONAL</span>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <p class="font-semibold text-white">所有系统运行正常</p>
-                        <p class="text-sm text-slate-400 font-mono mt-0.5">All Systems Operational</p>
-                    </div>
-                    <div class="ml-auto flex items-center gap-2 text-xs text-green-400 font-mono">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-400 pulse-dot"></span>
-                        <span>OPERATIONAL</span>
+                    <!-- 底部统计 -->
+                    <div class="relative mt-8 pt-6 border-t border-emerald-500/10 grid grid-cols-3 gap-6">
+                        <div>
+                            <p class="text-xs text-slate-500 font-mono mb-1">MONITORS</p>
+                            <p class="text-2xl font-bold text-white font-mono">{{ monitors.filter(m=>m.paused!==1).length }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-mono mb-1">UPTIME</p>
+                            <p class="text-2xl font-bold text-emerald-400 font-mono">{{ monitors.filter(m=>m.paused!==1).length > 0 ? Math.round(monitors.filter(m=>m.paused!==1&&m.status==='UP').length / monitors.filter(m=>m.paused!==1).length * 100) : 0 }}%</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-mono mb-1">INCIDENTS</p>
+                            <p class="text-2xl font-bold text-white font-mono">{{ monitors.filter(m=>m.status==='DOWN').length }}</p>
+                        </div>
                     </div>
                 </div>
+
                 <!-- 探测中 -->
-                <div v-else-if="hasRetrying && !hasDown && !error" class="glass rounded-2xl p-6 flex items-center gap-4 border border-yellow-400/20">
-                    <div class="w-12 h-12 rounded-xl bg-yellow-400/15 flex items-center justify-center shrink-0">
-                        <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-white">正在探测异常站点</p>
-                        <p class="text-sm text-slate-400 font-mono mt-0.5">Investigating Potential Issue</p>
-                    </div>
-                    <div class="ml-auto flex items-center gap-2 text-xs text-yellow-400 font-mono">
-                        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 pulse-dot"></span>
-                        <span>DEGRADED</span>
+                <div v-else-if="hasRetrying && !hasDown && !error"
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-yellow-400/15">
+                    <div class="absolute inset-0 bg-gradient-to-br from-yellow-950/30 via-yellow-900/5 to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-yellow-500/[0.04] rounded-full blur-[80px] hero-glow"></div>
+                    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div class="flex items-start gap-5">
+                            <div class="w-14 h-14 rounded-2xl bg-yellow-400/15 flex items-center justify-center shrink-0 border border-yellow-400/20">
+                                <svg class="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">正在探测异常站点</h1>
+                                <p class="text-sm text-yellow-400/70 font-mono tracking-wider">INVESTIGATING POTENTIAL ISSUE</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/10 border border-yellow-400/20">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-400"></span>
+                            </span>
+                            <span class="text-xs font-bold font-mono text-yellow-400 tracking-widest">DEGRADED</span>
+                        </div>
                     </div>
                 </div>
+
                 <!-- 服务故障 -->
-                <div v-else-if="hasDown && !error" class="glass rounded-2xl p-6 flex items-center gap-4 border border-red-500/20 glow-red">
-                    <div class="w-12 h-12 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
-                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div v-else-if="hasDown && !error"
+                    class="hero-banner relative overflow-hidden rounded-3xl p-8 md:p-10 border border-red-500/15 glow-red">
+                    <div class="absolute inset-0 bg-gradient-to-br from-red-950/40 via-red-900/10 to-transparent"></div>
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-red-500/[0.06] rounded-full blur-[80px] hero-glow"></div>
+                    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div class="flex items-start gap-5">
+                            <div class="w-14 h-14 rounded-2xl bg-red-500/15 flex items-center justify-center shrink-0 border border-red-500/20">
+                                <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-1">部分服务出现异常</h1>
+                                <p class="text-sm text-red-400/70 font-mono tracking-wider">SERVICE DISRUPTION DETECTED</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-400"></span>
+                            </span>
+                            <span class="text-xs font-bold font-mono text-red-400 tracking-widest">DISRUPTED</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 错误 -->
+                <div v-if="error" class="mt-4 glass rounded-2xl p-5 flex items-center gap-4 border-l-4 border-orange-500">
+                    <div class="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
                         </svg>
                     </div>
-                    <div>
-                        <p class="font-semibold text-white">部分服务出现异常</p>
-                        <p class="text-sm text-slate-400 font-mono mt-0.5">Service Disruption Detected</p>
-                    </div>
-                    <div class="ml-auto flex items-center gap-2 text-xs text-red-400 font-mono">
-                        <span class="w-1.5 h-1.5 rounded-full bg-red-400 pulse-dot"></span>
-                        <span>DISRUPTED</span>
-                    </div>
+                    <p class="text-sm text-orange-300 flex-1">{{ error }}</p>
+                    <button @click="fetchMonitors" class="text-xs px-4 py-2 rounded-xl bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-all duration-300 cursor-pointer font-bold font-mono tracking-wide">RETRY</button>
                 </div>
             </div>
 
-            <!-- 加载占位 -->
+            <!-- ▸ 加载占位 -->
             <div v-if="loading && monitors.length === 0" class="space-y-3 fade-up-d2">
-                <div v-for="i in 4" :key="i" class="glass rounded-xl h-16 animate-pulse"></div>
+                <div v-for="i in 4" :key="i" class="glass rounded-2xl h-20 animate-pulse"></div>
             </div>
 
-            <!-- 无监控项 -->
-            <div v-else-if="!loading && monitors.length === 0" class="text-center py-20 glass rounded-2xl border border-dashed border-slate-700 fade-up-d2">
-                <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/>
-                </svg>
-                <p class="text-slate-500 font-mono text-sm">NO MONITORS CONFIGURED</p>
+            <!-- ▸ 无监控项 -->
+            <div v-else-if="!loading && monitors.length === 0" class="text-center py-24 glass rounded-3xl border border-dashed border-white/[0.06] fade-up-d2">
+                <div class="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/>
+                    </svg>
+                </div>
+                <p class="text-slate-600 font-mono text-sm tracking-widest">NO MONITORS CONFIGURED</p>
             </div>
 
-            <!-- 监控列表 -->
-            <div v-else class="space-y-2.5 fade-up-d2">
+            <!-- ▸ 监控列表 -->
+            <div v-else class="fade-up-d1">
                 <!-- 区域标签 -->
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">服务列表</h2>
-                    <span class="text-xs font-mono text-slate-600">{{ monitors.filter(m=>m.paused!==1).length }} 个监控项</span>
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1 h-5 rounded-full bg-emerald-500"></div>
+                        <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">服务列表</h2>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-mono text-slate-600">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
+                        {{ monitors.filter(m=>m.paused!==1).length }} 个活跃监控
+                    </div>
                 </div>
 
-                <div v-for="(m, idx) in monitors" :key="m.id"
-                    class="glass rounded-xl px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 hover:border-white/10 transition-all duration-200 cursor-default group"
-                    :class="m.paused ? 'opacity-50' : ''">
+                <!-- 监控卡片 -->
+                <div class="space-y-2">
+                    <div v-for="(m, idx) in monitors" :key="m.id"
+                        class="glass-card rounded-2xl px-6 py-5 status-line cursor-default group"
+                        :class="[
+                            m.paused ? 'opacity-40 status-line-gray' : '',
+                            m.status === 'UP' && !m.paused ? 'status-line-green' : '',
+                            m.status === 'DOWN' ? 'status-line-red' : '',
+                            m.status === 'RETRYING' ? 'status-line-yellow' : '',
+                        ]"
+                        :style="{ animationDelay: (idx * 0.06) + 's' }">
 
-                    <!-- 左侧：状态点 + 名称 + URL -->
-                    <div class="flex items-center gap-4 min-w-0">
-                        <!-- 状态指示灯 -->
-                        <div class="relative shrink-0">
-                            <div class="w-2.5 h-2.5 rounded-full"
-                                :class="{
-                                    'bg-green-400 glow-green': m.status === 'UP',
-                                    'bg-red-400 glow-red':    m.status === 'DOWN',
-                                    'bg-yellow-400':          m.status === 'RETRYING',
-                                    'bg-slate-500':           m.status === 'PAUSED' || m.paused,
-                                }">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <!-- 左侧：状态 + 信息 -->
+                            <div class="flex items-center gap-4 min-w-0 pl-4">
+                                <!-- 状态指示灯 -->
+                                <div class="relative shrink-0">
+                                    <div class="w-3 h-3 rounded-full transition-all duration-300"
+                                        :class="{
+                                            'bg-emerald-400': m.status === 'UP' && !m.paused,
+                                            'bg-red-400':     m.status === 'DOWN',
+                                            'bg-yellow-400':  m.status === 'RETRYING',
+                                            'bg-slate-600':   m.status === 'PAUSED' || m.paused,
+                                        }">
+                                    </div>
+                                    <div v-if="m.status === 'UP' && !m.paused"
+                                        class="absolute inset-0 rounded-full bg-emerald-400/40 pulse-dot"></div>
+                                </div>
+
+                                <!-- 名称 + URL -->
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2.5 mb-1">
+                                        <h3 class="font-bold text-white text-[15px] truncate group-hover:text-emerald-300 transition-colors duration-300">{{ m.name }}</h3>
+                                        <span v-if="m.status === 'DOWN'"
+                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-red-500/15 text-red-400 border border-red-500/20 tracking-wider">DOWN</span>
+                                        <span v-if="m.status === 'RETRYING'"
+                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-yellow-400/15 text-yellow-400 border border-yellow-400/20 tracking-wider">RETRYING</span>
+                                        <span v-if="m.paused"
+                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-slate-800 text-slate-500 border border-slate-700 tracking-wider">PAUSED</span>
+                                    </div>
+                                    <a :href="m.url" target="_blank" rel="noopener"
+                                        class="text-xs font-mono text-slate-600 hover:text-emerald-400 transition-colors duration-300 truncate flex items-center gap-1.5 max-w-sm cursor-pointer">
+                                        {{ m.url }}
+                                        <svg class="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity duration-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+                                        </svg>
+                                    </a>
+                                </div>
                             </div>
-                            <div v-if="m.status === 'UP'" class="absolute inset-0 rounded-full bg-green-400 opacity-40 pulse-dot"></div>
-                        </div>
 
-                        <!-- 信息 -->
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <h3 class="font-semibold text-white text-sm truncate">{{ m.name }}</h3>
-                                <span v-if="m.status === 'DOWN'" class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-red-500/15 text-red-400 border border-red-500/20">DOWN</span>
-                                <span v-if="m.status === 'RETRYING'" class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-yellow-400/15 text-yellow-400 border border-yellow-400/20">RETRYING</span>
-                                <span v-if="m.paused" class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-700 text-slate-400">PAUSED</span>
+                            <!-- 右侧：标签 + 时间 + 状态 -->
+                            <div class="flex items-center gap-3 pl-8 md:pl-0 monitor-meta">
+                                <!-- SSL -->
+                                <div v-if="m.cert_expiry"
+                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium border transition-all duration-300"
+                                    :class="getExpiryClass(m.cert_expiry)">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                    </svg>
+                                    SSL {{ formatExpiry(m.cert_expiry) }}
+                                </div>
+                                <div v-else-if="m.status === 'UP'"
+                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium border border-emerald-500/20 bg-emerald-500/8 text-emerald-400">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                                    </svg>
+                                    SSL OK
+                                </div>
+
+                                <!-- 最后检测 -->
+                                <span class="text-[11px] font-mono text-slate-600 whitespace-nowrap">{{ formatDate(m.last_check) }}</span>
+
+                                <!-- 状态徽章 -->
+                                <span class="px-3 py-1.5 rounded-lg text-[10px] font-bold font-mono tracking-[0.15em] border transition-all duration-300"
+                                    :class="m.status === 'UP' && !m.paused
+                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                        : m.status === 'DOWN'
+                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                            : m.status === 'RETRYING'
+                                                ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
+                                                : 'bg-slate-800 text-slate-500 border-slate-700'">
+                                    {{ m.paused ? 'PAUSED' : m.status === 'UP' ? 'ONLINE' : m.status === 'DOWN' ? 'OFFLINE' : 'RETRYING' }}
+                                </span>
                             </div>
-                            <a :href="m.url" target="_blank" rel="noopener"
-                                class="text-xs font-mono text-slate-500 hover:text-green-400 transition-colors duration-200 truncate flex items-center gap-1 max-w-xs cursor-pointer">
-                                {{ m.url }}
-                                <svg class="w-2.5 h-2.5 opacity-50 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
-                                </svg>
-                            </a>
                         </div>
-                    </div>
-
-                    <!-- 右侧：SSL标签 + 最后检测时间 + 状态徽章 -->
-                    <div class="flex items-center gap-3 pl-6 md:pl-0 border-t border-white/4 md:border-0 pt-3 md:pt-0">
-                        <!-- SSL -->
-                        <div v-if="m.cert_expiry"
-                            class="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-medium border transition-colors duration-200"
-                            :class="getExpiryClass(m.cert_expiry)">
-                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                            </svg>
-                            SSL {{ formatExpiry(m.cert_expiry) }}
-                        </div>
-                        <div v-else-if="m.status === 'UP'"
-                            class="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-medium border border-green-500/25 bg-green-500/10 text-green-400">
-                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-                            </svg>
-                            SSL OK
-                        </div>
-
-                        <!-- 最后检测 -->
-                        <span class="text-xs font-mono text-slate-600 whitespace-nowrap">{{ formatDate(m.last_check) }}</span>
-
-                        <!-- 状态徽章 -->
-                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono tracking-wider border transition-colors duration-200 ml-1"
-                            :class="m.status === 'UP' && !m.paused
-                                ? 'bg-green-500/12 text-green-400 border-green-500/20'
-                                : m.status === 'DOWN'
-                                    ? 'bg-red-500/12 text-red-400 border-red-500/20'
-                                    : m.status === 'RETRYING'
-                                        ? 'bg-yellow-400/12 text-yellow-400 border-yellow-400/20'
-                                        : 'bg-slate-700 text-slate-400 border-slate-700'">
-                            {{ m.paused ? 'PAUSED' : m.status === 'UP' ? 'ONLINE' : m.status === 'DOWN' ? 'OFFLINE' : 'RETRYING' }}
-                        </span>
                     </div>
                 </div>
             </div>
         </main>
 
         <!-- 底部 -->
-        <footer class="border-t border-white/5 py-6 mt-4">
-            <div class="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-600">
-                <p>&copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-slate-400 transition-colors duration-200">念舒</a>. All Rights Reserved.</p>
-                <div class="flex items-center gap-4 font-mono">
-                    <span class="flex items-center gap-1.5">
+        <footer class="border-t border-white/[0.04] py-8 mt-8">
+            <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-700">
+                <div class="flex items-center gap-2">
+                    <div class="w-1 h-1 rounded-full bg-emerald-500/40"></div>
+                    <p>&copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-slate-400 transition-colors duration-300">念舒</a>. All Rights Reserved.</p>
+                </div>
+                <div class="flex items-center gap-5 font-mono">
+                    <span class="flex items-center gap-1.5 text-slate-600">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/></svg>
                         Cloudflare Edge
                     </span>
-                    <a href="/admin" class="flex items-center gap-1.5 hover:text-slate-400 transition-colors duration-200 cursor-pointer">
+                    <a href="/admin" class="flex items-center gap-1.5 text-slate-600 hover:text-slate-400 transition-colors duration-300 cursor-pointer">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
                         Admin
                     </a>
@@ -374,7 +519,7 @@
                     if (days < 0)  return 'text-slate-500 border-slate-700 opacity-60';
                     if (days < 7)  return 'text-red-400 border-red-500/25 bg-red-500/10';
                     if (days < 30) return 'text-yellow-400 border-yellow-400/25 bg-yellow-400/10';
-                    return 'text-green-400 border-green-500/25 bg-green-500/10';
+                    return 'text-emerald-400 border-emerald-500/25 bg-emerald-500/10';
                 };
 
                 const formatExpiry = (dateStr) => {

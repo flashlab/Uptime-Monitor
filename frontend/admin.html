@@ -1,400 +1,347 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Uptime Monitor</title>
-    <!-- Favicon: 盾牌 SVG -->
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <title>Admin Dashboard — Uptime Monitor</title>
+    <meta name="description" content="Uptime Monitor 管理控制台">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%2222c55e%22><path d=%22M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5%22/></svg>">
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        *, body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .font-mono {
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* 磨砂玻璃效果 */
-        .glass {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(203, 213, 225, 0.3);
-        }
-        .dark .glass {
-            background: rgba(30, 41, 59, 0.65);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        /* 输入框聚焦动画 */
-        .input-transition {
-            transition: border-color 0.18s ease, box-shadow 0.18s ease;
-        }
-        .input-transition:focus {
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
-        }
-
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            * { animation: none !important; transition: none !important; }
-        }
-        @keyframes modal-in {
-            from { opacity: 0; transform: scale(0.95) translateY(8px); }
-            to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @media (prefers-color-scheme: dark) {
-            ::-webkit-scrollbar-thumb {
-                background: #334155;
-            }
-
-            ::-webkit-scrollbar-thumb:hover {
-                background: #475569;
-            }
-        }
-
-        /* Toast 动画 */
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-            }
-        }
-
-        .toast-enter {
-            animation: slideInRight 0.3s ease-out;
-        }
-
-        .toast-leave {
-            animation: fadeOut 0.3s ease-in forwards;
-        }
-
-        /* 折线图 SVG */
-        .sparkline-container svg {
-            display: block;
-        }
-    </style>
     <script>
         tailwind.config = {
-            darkMode: 'media',
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        primary:   '#22c55e',
-                        'primary-hover': '#16a34a',
-                        dark:      '#0f172a',
-                        'dark-card':'#1e293b',
-                        surface:   '#1e293b',
-                        'surface-2':'#334155',
+                        surface: '#1E293B',
+                        'surface-2': '#334155',
                     },
                     fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
                     }
                 }
             }
         }
     </script>
+    <style>
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        body { background: #0F172A; }
+
+        /* 磨砂玻璃 */
+        .glass {
+            background: rgba(30,41,59,0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* 光晕 */
+        .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.15); }
+
+        /* 输入框聚焦 */
+        .input-field {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field:focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+        }
+
+        /* 脉冲 */
+        @keyframes pulse-dot {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(1.15); }
+        }
+        .pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+
+        /* 进入动画 */
+        @keyframes fade-up {
+            from { opacity:0; transform:translateY(16px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        .fade-up { animation: fade-up 0.5s ease-out forwards; }
+        .fade-up-d1 { animation: fade-up 0.5s 0.08s ease-out both; }
+        .fade-up-d2 { animation: fade-up 0.5s 0.16s ease-out both; }
+
+        /* Modal 弹入 */
+        @keyframes modal-in {
+            from { opacity:0; transform:scale(0.95) translateY(8px); }
+            to { opacity:1; transform:scale(1) translateY(0); }
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width:5px; height:5px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:#334155; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background:#475569; }
+
+        /* Toast */
+        @keyframes slideInRight {
+            from { transform:translateX(100%); opacity:0; }
+            to { transform:translateX(0); opacity:1; }
+        }
+        @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+        .toast-enter { animation: slideInRight 0.3s ease-out; }
+        .toast-leave { animation: fadeOut 0.3s ease-in forwards; }
+
+        /* 折线图 */
+        .sparkline-container svg { display:block; }
+
+        /* 卡片悬浮 */
+        .card-hover { transition: border-color 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 0 24px rgba(34,197,94,0.06); }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, .fade-up, .fade-up-d1, .fade-up-d2 { animation:none!important; transition:none!important; }
+        }
+    </style>
 </head>
 
-<body
-    class="bg-gray-50 text-slate-800 dark:text-slate-200 min-h-screen transition-colors duration-300" style="font-family:'Plus Jakarta Sans',sans-serif">
-    <style>@media(prefers-color-scheme:dark){body{background:#0f172a}}</style>
+<body class="min-h-screen text-slate-200">
+    <!-- 背景光晕 -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div class="absolute -top-40 -right-40 w-[600px] h-[600px] bg-green-600/8 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-blue-600/6 rounded-full blur-3xl"></div>
+    </div>
+
     <div id="app" class="min-h-screen flex flex-col">
 
-        <!-- 登录弹窗 (全屏覆盖) -->
+        <!-- 登录弹窗 -->
         <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95"
             enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in"
             leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-            <div v-if="!isAuthenticated"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div
-                    class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
+            <div v-if="!isAuthenticated" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(15,23,42,0.9);backdrop-filter:blur(8px)">
+                <div class="glass w-full max-w-sm rounded-2xl overflow-hidden" style="animation:modal-in 0.3s ease-out">
                     <div class="p-8 text-center">
-                        <div
-                            class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i class="fas fa-lock text-2xl text-blue-600 dark:text-blue-400"></i>
+                        <div class="w-14 h-14 rounded-xl bg-green-500/15 flex items-center justify-center mx-auto mb-5">
+                            <i class="fas fa-lock text-xl text-green-400"></i>
                         </div>
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Access</h2>
-                        <p class="text-gray-500 dark:text-slate-400 mb-8 text-sm">请输入管理员密码以访问控制台</p>
-
+                        <h2 class="text-xl font-bold text-white mb-1">Admin Access</h2>
+                        <p class="text-slate-500 text-sm mb-6">请输入管理员密码以访问控制台</p>
                         <div class="relative group">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i
-                                    class="fas fa-key text-gray-400 group-focus-within:text-green-500 transition-colors"></i>
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fas fa-key text-slate-600 group-focus-within:text-green-400 transition-colors text-sm"></i>
                             </div>
                             <input type="password" v-model="inputPassword" @keyup.enter="login"
-                                class="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-slate-600 rounded-xl leading-5 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm transition-all duration-200 shadow-sm hover:bg-white dark:hover:bg-slate-800"
+                                class="input-field block w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-600 text-sm outline-none"
                                 placeholder="Enter your password" autocomplete="current-password">
                         </div>
-
                         <button @click="login"
-                            class="mt-6 w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
+                            class="mt-5 w-full py-3 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-green-500/20 cursor-pointer">
                             进入系统
                         </button>
                     </div>
-                    <div
-                        class="bg-gray-50 dark:bg-slate-900/50 px-8 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center text-xs text-gray-400">
-                        <span><i class="fas fa-shield-alt mr-1"></i> Secure Area</span>
-                        <a href="/" class="hover:text-blue-600 transition-colors">返回首页</a>
+                    <div class="border-t border-white/5 px-8 py-3 flex justify-between items-center text-xs text-slate-600">
+                        <span><i class="fas fa-shield-alt mr-1"></i>Secure Area</span>
+                        <a href="/" class="hover:text-green-400 transition-colors">返回首页</a>
                     </div>
                 </div>
             </div>
         </transition>
 
         <!-- 顶部导航 -->
-        <header
-            class="bg-white/90 dark:bg-slate-900/90 border-b border-gray-200/50 dark:border-white/5 sticky top-0 z-40 shadow-sm backdrop-blur-md">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0 flex items-center gap-2">
-                            <div class="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white">
-                                <i class="fas fa-bolt"></i>
-                            </div>
-                            <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Uptime<span
-                                    class="text-green-500">.Admin</span></span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <a href="/"
-                            class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
-                            title="查看状态页">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                        <button @click="fetchMonitors"
-                            class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
-                            :class="{ 'animate-spin': loading }" title="刷新数据">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <div class="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-1"></div>
-                        <button @click="logout"
-                            class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span class="hidden sm:inline">退出</span>
-                        </button>
-                    </div>
+        <header class="sticky top-0 z-40 border-b border-white/5" style="background:rgba(15,23,42,0.85);backdrop-filter:blur(16px)">
+            <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="font-semibold text-white tracking-tight">Uptime<span class="text-green-400">.</span>Admin</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="/" class="p-2 rounded-lg text-slate-500 hover:text-green-400 hover:bg-white/5 transition-colors text-sm" title="状态页">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    <button @click="fetchMonitors" class="p-2 rounded-lg text-slate-500 hover:text-green-400 hover:bg-white/5 transition-colors text-sm" :class="{ 'animate-spin': loading }" title="刷新">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="h-4 w-px bg-white/10 mx-1"></div>
+                    <button @click="logout" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="hidden sm:inline">退出</span>
+                    </button>
                 </div>
             </div>
         </header>
 
         <!-- 主要内容 -->
-        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
 
-            <!-- API 错误提示 (Item 9) -->
-            <div v-if="error"
-                class="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-500/30 rounded-xl p-4 flex items-center gap-3">
-                <i class="fas fa-exclamation-circle text-orange-500 text-lg flex-shrink-0"></i>
-                <p class="text-sm text-orange-700 dark:text-orange-400 flex-1">{{ error }}</p>
-                <button @click="fetchMonitors"
-                    class="text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 transition font-medium">重试</button>
-            </div>
-
-            <!-- 统计概览卡片 (Item 5) -->
-            <div v-if="isAuthenticated && monitors.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">总计</span>
-                        <div class="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-server text-slate-500 text-sm"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total }}</p>
-                    <p class="text-xs text-gray-400 mt-1">监控项目</p>
+            <!-- 页面标题 -->
+            <div class="mb-8 fade-up flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">管理控制台</h1>
+                    <p class="text-slate-500 text-sm mt-0.5">管理监控项目与通知配置</p>
                 </div>
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-green-500">在线</span>
-                        <div
-                            class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-check text-green-500 text-sm"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ stats.online }}</p>
-                    <p class="text-xs text-gray-400 mt-1">运行正常</p>
-                </div>
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-red-500">故障</span>
-                        <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-times text-red-500 text-sm"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-red-600 dark:text-red-400">{{ stats.offline }}</p>
-                    <p class="text-xs text-gray-400 mt-1">需要关注</p>
-                </div>
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">暂停</span>
-                        <div class="w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-pause text-gray-400 text-sm"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-500 dark:text-slate-400">{{ stats.paused }}</p>
-                    <p class="text-xs text-gray-400 mt-1">已暂停</p>
+                <div class="flex items-center gap-3">
+                    <button @click="showChannels = true"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white text-sm font-medium rounded-xl transition-all shadow-sm cursor-pointer border border-slate-600/50">
+                        <i class="fas fa-bell text-xs"></i>
+                        通知渠道
+                    </button>
+                    <button @click="showAddModal = true"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-lg hover:shadow-green-500/20 cursor-pointer">
+                        <i class="fas fa-plus text-xs"></i>
+                        添加监控
+                    </button>
                 </div>
             </div>
 
+            <!-- 错误提示 -->
+            <div v-if="error" class="mb-6 glass rounded-xl p-4 flex items-center gap-3 border-l-4 border-orange-500 fade-up">
+                <i class="fas fa-exclamation-circle text-orange-400 shrink-0"></i>
+                <p class="text-sm text-orange-300 flex-1">{{ error }}</p>
+                <button @click="fetchMonitors" class="text-xs px-3 py-1.5 rounded-lg bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors font-medium cursor-pointer">重试</button>
+            </div>
 
-            <!-- 监控列表操作栏 -->
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">监控列表</h2>
+            <!-- 统计概览 -->
+            <div v-if="isAuthenticated && monitors.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8 fade-up-d1">
+                <div class="glass rounded-xl p-4 glow-green">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">总计</span>
+                        <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center">
+                            <i class="fas fa-server text-slate-400 text-xs"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-white font-mono">{{ stats.total }}</p>
+                    <p class="text-[10px] text-slate-600 mt-1 uppercase tracking-wider">Monitors</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-green-500">在线</span>
+                        <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <i class="fas fa-check text-green-400 text-xs"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-green-400 font-mono">{{ stats.online }}</p>
+                    <p class="text-[10px] text-slate-600 mt-1 uppercase tracking-wider">Operational</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-red-400">故障</span>
+                        <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                            <i class="fas fa-times text-red-400 text-xs"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-red-400 font-mono">{{ stats.offline }}</p>
+                    <p class="text-[10px] text-slate-600 mt-1 uppercase tracking-wider">Disrupted</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">暂停</span>
+                        <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center">
+                            <i class="fas fa-pause text-slate-500 text-xs"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-400 font-mono">{{ stats.paused }}</p>
+                    <p class="text-[10px] text-slate-600 mt-1 uppercase tracking-wider">Paused</p>
+                </div>
+            </div>
+
+            <!-- 加载占位 -->
+            <div v-if="loading && monitors.length === 0" class="space-y-3 fade-up-d2">
+                <div v-for="i in 4" :key="i" class="glass rounded-xl h-16 animate-pulse"></div>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-else-if="monitors.length === 0 && !loading"
+                class="text-center py-20 glass rounded-2xl border border-dashed border-slate-700 fade-up-d2">
+                <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-satellite-dish text-2xl text-slate-600"></i>
+                </div>
+                <h3 class="text-lg font-medium text-white">暂无监控项目</h3>
+                <p class="text-slate-500 mt-1 mb-6 text-sm">点击上方「添加监控」开始配置</p>
                 <button @click="showAddModal = true"
-                    class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm hover:shadow-md cursor-pointer">
-                    <i class="fas fa-plus text-xs"></i>
-                    添加监控
-                </button>
-            </div>
-
-            <!-- 监控列表 -->
-            <div v-if="monitors.length === 0 && !loading"
-                class="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-                <div class="w-20 h-20 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-server text-3xl text-gray-300 dark:text-slate-500"></i>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">暂无监控项目</h3>
-                <p class="text-gray-500 dark:text-slate-400 mt-1 mb-6">点击上方「添加监控」开始配置</p>
-                <button @click="showAddModal = true"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm cursor-pointer">
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-lg hover:shadow-green-500/20 cursor-pointer">
                     <i class="fas fa-plus text-xs"></i> 添加第一个监控
                 </button>
             </div>
 
-            <div v-else class="grid gap-4">
+            <!-- 监控列表 -->
+            <div v-else class="space-y-2.5 fade-up-d2">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">监控列表</h2>
+                    <span class="text-xs font-mono text-slate-600">{{ monitors.length }} 个监控项</span>
+                </div>
+
                 <div v-for="m in monitors" :key="m.id"
-                    class="group bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm hover:shadow-md border border-gray-100 dark:border-slate-700 transition-all duration-200 flex flex-col md:flex-row items-center justify-between gap-6"
-                    :class="m.paused ? 'opacity-60' : ''">
+                    class="glass rounded-xl px-5 py-4 card-hover flex flex-col md:flex-row md:items-center md:justify-between gap-4 cursor-default group"
+                    :class="m.paused ? 'opacity-50' : ''">
 
                     <!-- 左侧信息 -->
-                    <div class="flex items-start gap-4 w-full md:w-auto">
-                        <div class="flex-shrink-0 mt-1">
-                            <span class="relative flex h-3 w-3">
-                                <span v-if="m.status === 'UP'"
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span v-if="m.status === 'RETRYING'"
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-3 w-3" :class="{
-                                    'bg-green-500': m.status === 'UP',
-                                    'bg-red-500': m.status === 'DOWN',
+                    <div class="flex items-center gap-4 min-w-0">
+                        <div class="relative shrink-0">
+                            <div class="w-2.5 h-2.5 rounded-full"
+                                :class="{
+                                    'bg-green-400': m.status === 'UP',
+                                    'bg-red-400': m.status === 'DOWN',
                                     'bg-yellow-400': m.status === 'RETRYING',
-                                    'bg-gray-400': m.status === 'PAUSED'
-                                }">
-                                </span>
-                            </span>
+                                    'bg-slate-500': m.status === 'PAUSED'
+                                }"></div>
+                            <div v-if="m.status === 'UP'" class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-400/40 animate-ping"></div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white truncate">{{ m.name }}</h3>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h3 class="font-semibold text-white truncate">{{ m.name }}</h3>
                                 <span v-if="m.status === 'DOWN'"
-                                    class="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse">DOWN</span>
+                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 animate-pulse">DOWN</span>
                                 <span v-if="m.status === 'RETRYING'"
-                                    class="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">重试中</span>
-                                <!-- Item 6: PAUSED 标签 -->
+                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-400">重试中</span>
                                 <span v-if="m.paused"
-                                    class="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">已暂停</span>
+                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-400">已暂停</span>
                             </div>
                             <a :href="m.url" target="_blank"
-                                class="text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-mono flex items-center gap-1 truncate max-w-sm">
-                                {{ m.url }} <i class="fas fa-external-link-alt text-[10px] opacity-50"></i>
+                                class="text-xs text-slate-500 hover:text-green-400 font-mono flex items-center gap-1 truncate max-w-xs transition-colors">
+                                {{ m.url }} <i class="fas fa-external-link-alt text-[8px] opacity-40"></i>
                             </a>
-                            <div v-if="m.keyword" class="mt-1 text-xs text-gray-400 flex items-center gap-1">
-                                <i class="fas fa-filter text-[10px]"></i> 关键词: {{ m.keyword }}
+                            <div v-if="m.keyword" class="mt-0.5 text-[10px] text-slate-600 flex items-center gap-1">
+                                <i class="fas fa-filter text-[8px]"></i> 关键词: {{ m.keyword }}
                             </div>
                         </div>
                     </div>
 
                     <!-- 右侧状态与操作 -->
-                    <div
-                        class="flex flex-col md:flex-row items-center gap-4 md:gap-8 w-full md:w-auto border-t md:border-t-0 border-gray-100 dark:border-slate-700 pt-4 md:pt-0">
-
-                        <!-- 指标数据 -->
-                        <div
-                            class="grid grid-cols-3 md:flex md:items-center gap-4 md:gap-6 text-center md:text-right w-full md:w-auto">
+                    <div class="flex items-center gap-6 md:gap-8 w-full md:w-auto border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
+                        <div class="grid grid-cols-3 md:flex md:items-center gap-4 md:gap-5 text-center md:text-right flex-1 md:flex-none">
                             <div class="flex flex-col">
-                                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Last
-                                    Check</span>
-                                <span class="text-xs font-mono text-gray-600 dark:text-slate-300">{{
-                                    formatDate(m.last_check) }}</span>
+                                <span class="text-[9px] uppercase tracking-wider text-slate-600 font-bold">Last Check</span>
+                                <span class="text-[11px] font-mono text-slate-400">{{ formatDate(m.last_check) }}</span>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">SSL</span>
-                                <span class="text-xs font-mono font-medium" :class="getExpiryClass(m.cert_expiry)">
+                                <span class="text-[9px] uppercase tracking-wider text-slate-600 font-bold">SSL</span>
+                                <span class="text-[11px] font-mono font-medium" :class="getExpiryClass(m.cert_expiry)">
                                     {{ m.cert_expiry ? getDaysRemaining(m.cert_expiry) + 'd' : 'OK' }}
                                 </span>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Domain</span>
-                                <span class="text-xs font-mono font-medium" :class="getExpiryClass(m.domain_expiry)">
+                                <span class="text-[9px] uppercase tracking-wider text-slate-600 font-bold">Domain</span>
+                                <span class="text-[11px] font-mono font-medium" :class="getExpiryClass(m.domain_expiry)">
                                     {{ m.domain_expiry ? getDaysRemaining(m.domain_expiry) + 'd' : '-' }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- 操作按钮 -->
-                        <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                            <!-- Item 6: 暂停/启用切换按钮 -->
-                            <button @click="togglePause(m)" class="p-2 rounded-lg transition-colors" :class="m.paused
-                                ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'"
+                        <div class="flex items-center gap-1">
+                            <button @click="togglePause(m)" class="p-2 rounded-lg transition-colors cursor-pointer" :class="m.paused
+                                ? 'text-green-500 hover:bg-green-500/10'
+                                : 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-500/10'"
                                 :title="m.paused ? '恢复监控' : '暂停监控'">
-                                <i :class="m.paused ? 'fas fa-play' : 'fas fa-pause'"></i>
+                                <i :class="m.paused ? 'fas fa-play' : 'fas fa-pause'" class="text-sm"></i>
                             </button>
-                            <button @click="openConfig(m)"
-                                class="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                                title="配置">
-                                <i class="fas fa-sliders-h"></i>
+                            <button @click="openConfig(m)" class="p-2 text-slate-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors cursor-pointer" title="配置">
+                                <i class="fas fa-sliders-h text-sm"></i>
                             </button>
-                            <button @click="viewLogs(m)"
-                                class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                title="查看日志">
-                                <i class="fas fa-list-ul"></i>
+                            <button @click="viewLogs(m)" class="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer" title="日志">
+                                <i class="fas fa-list-ul text-sm"></i>
                             </button>
-                            <button @click="deleteMonitor(m)"
-                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="删除">
-                                <i class="far fa-trash-alt"></i>
+                            <button @click="deleteMonitor(m)" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer" title="删除">
+                                <i class="far fa-trash-alt text-sm"></i>
                             </button>
                         </div>
                     </div>
@@ -402,139 +349,137 @@
             </div>
         </main>
 
-        <!-- 底部版权 -->
-        <footer
-            class="mt-auto py-6 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 backdrop-blur-sm">
-            <div
-                class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p class="text-xs text-gray-400 dark:text-slate-500">
+        <!-- Footer -->
+        <footer class="mt-auto py-5 border-t border-white/5">
+            <div class="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-3">
+                <p class="text-xs text-slate-600">
                     &copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank"
-                        class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">念舒</a>. All
-                    Rights Reserved.
+                        class="hover:text-green-400 transition-colors font-medium">念舒</a>. All Rights Reserved.
                 </p>
-                <div class="flex items-center gap-4 text-xs text-gray-400 dark:text-slate-600 font-mono">
+                <div class="flex items-center gap-4 text-xs text-slate-700 font-mono">
                     <span><i class="fas fa-code-branch mr-1"></i>v1.4.0</span>
                     <span><i class="fas fa-server mr-1"></i>Cloudflare Edge</span>
                 </div>
             </div>
         </footer>
 
-        <!-- 日志模态框 (侧边抽屉式) -->
-        <transition enter-active-class="transition transform duration-300 ease-in-out"
-            enter-from-class="translate-x-full" enter-to-class="translate-x-0"
-            leave-active-class="transition transform duration-300 ease-in-out" leave-from-class="translate-x-0"
-            leave-to-class="translate-x-full">
-            <div v-if="showLogs"
-                class="fixed inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-slate-800 shadow-2xl z-50 border-l border-gray-200 dark:border-slate-700 flex flex-col">
+        <!-- 日志弹窗 -->
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+            <div v-if="showLogs" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showLogs = false"></div>
+                <div class="relative w-full max-w-4xl glass rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                    style="animation:modal-in 0.25s ease-out; max-height: 85vh">
 
-                <!-- 抽屉头部 -->
-                <div
-                    class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-900">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ currentMonitor?.name }}</h3>
-                        <p class="text-xs text-gray-500 font-mono mt-1">检测日志流水</p>
+                    <!-- 头部 -->
+                    <div class="px-8 py-5 border-b border-white/5 bg-gradient-to-r from-blue-900/15 to-transparent flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-500/15 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-list-ul text-blue-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">{{ currentMonitor?.name }}</h3>
+                                <p class="text-xs text-slate-500 mt-0.5 font-mono">检测日志流水</p>
+                            </div>
+                        </div>
+                        <button @click="showLogs = false" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
                     </div>
-                    <button @click="showLogs = false"
-                        class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
 
-                <!-- Item 11: Uptime 可用率统计 -->
-                <div v-if="uptimeStats && (uptimeStats.h24 !== null || uptimeStats.d7 !== null)"
-                    class="px-6 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/30">
-                    <div class="flex items-center gap-6 text-xs">
-                        <div v-for="stat in [
-                        {label:'24 小时', val: uptimeStats.h24},
-                        {label:'7 天', val: uptimeStats.d7},
-                        {label:'30 天', val: uptimeStats.d30}
-                    ]" :key="stat.label">
-                            <span class="text-gray-400 font-medium">{{ stat.label }} 可用率</span>
-                            <span class="font-mono font-bold ml-1.5"
-                                :class="stat.val === null ? 'text-gray-400' : Number(stat.val) >= 99 ? 'text-green-500' : Number(stat.val) >= 95 ? 'text-yellow-500' : 'text-red-500'">
-                                {{ stat.val !== null ? stat.val + '%' : 'N/A' }}
-                            </span>
+                    <!-- Uptime 可用率统计 -->
+                    <div v-if="uptimeStats && (uptimeStats.h24 !== null || uptimeStats.d7 !== null)"
+                        class="px-8 py-3 border-b border-white/5 bg-slate-900/30">
+                        <div class="flex items-center gap-8 text-xs">
+                            <div v-for="stat in [
+                            {label:'24 小时', val: uptimeStats.h24},
+                            {label:'7 天', val: uptimeStats.d7},
+                            {label:'30 天', val: uptimeStats.d30}
+                        ]" :key="stat.label">
+                                <span class="text-slate-400 font-medium">{{ stat.label }} 可用率</span>
+                                <span class="font-mono font-bold ml-1.5"
+                                    :class="stat.val === null ? 'text-slate-500' : Number(stat.val) >= 99 ? 'text-green-400' : Number(stat.val) >= 95 ? 'text-yellow-400' : 'text-red-400'">
+                                    {{ stat.val !== null ? stat.val + '%' : 'N/A' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Items 7/12: 响应延迟趋势 SVG 折线图 -->
-                <div v-if="logs.length > 1 && sparkline"
-                    class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 sparkline-container bg-gray-50/30 dark:bg-slate-900/20">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">响应延迟趋势</span>
-                        <span class="text-xs text-gray-400 font-mono">Max: {{ sparkline.maxL }}ms</span>
+                    <!-- 响应延迟趋势 SVG 折线图 -->
+                    <div v-if="logs.length > 1 && sparkline"
+                        class="px-8 py-4 border-b border-white/5 sparkline-container bg-slate-900/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">响应延迟趋势</span>
+                            <span class="text-xs text-slate-500 font-mono">Max: {{ sparkline.maxL }}ms</span>
+                        </div>
+                        <svg :viewBox="`0 0 ${sparkline.W} ${sparkline.H}`" class="w-full h-14" preserveAspectRatio="none">
+                            <path :d="sparkline.path" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round"
+                                stroke-linecap="round" />
+                            <circle v-for="(p, i) in sparkline.points" :key="i" :cx="p.x" :cy="p.y" r="3"
+                                :fill="p.fail ? '#ef4444' : '#22c55e'" :opacity="p.fail ? 1 : 0.8" />
+                            <g v-for="(p, i) in sparkline.points.filter(pt => pt.fail)" :key="'x' + i">
+                                <line :x1="p.x - 4" :y1="p.y - 4" :x2="p.x + 4" :y2="p.y + 4" stroke="#ef4444"
+                                    stroke-width="1.5" />
+                                <line :x1="p.x + 4" :y1="p.y - 4" :x2="p.x - 4" :y2="p.y + 4" stroke="#ef4444"
+                                    stroke-width="1.5" />
+                            </g>
+                        </svg>
                     </div>
-                    <svg :viewBox="`0 0 ${sparkline.W} ${sparkline.H}`" class="w-full h-14" preserveAspectRatio="none">
-                        <!-- 折线（仅成功点连线）-->
-                        <path :d="sparkline.path" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round"
-                            stroke-linecap="round" />
-                        <!-- 数据点 -->
-                        <circle v-for="(p, i) in sparkline.points" :key="i" :cx="p.x" :cy="p.y" r="3"
-                            :fill="p.fail ? '#ef4444' : '#22c55e'" :opacity="p.fail ? 1 : 0.8" />
-                        <!-- 失败点十字标记 -->
-                        <g v-for="(p, i) in sparkline.points.filter(pt => pt.fail)" :key="'x' + i">
-                            <line :x1="p.x - 4" :y1="p.y - 4" :x2="p.x + 4" :y2="p.y + 4" stroke="#ef4444"
-                                stroke-width="1.5" />
-                            <line :x1="p.x + 4" :y1="p.y - 4" :x2="p.x - 4" :y2="p.y + 4" stroke="#ef4444"
-                                stroke-width="1.5" />
-                        </g>
-                    </svg>
-                </div>
 
-                <!-- 日志表格 -->
-                <div class="flex-1 overflow-y-auto p-0">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-50 dark:bg-slate-900/50 sticky top-0 z-10">
-                            <tr>
-                                <th
-                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
-                                    Time</th>
-                                <th
-                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
-                                    Status</th>
-                                <th
-                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
-                                    Latency</th>
-                                <th
-                                    class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b dark:border-slate-700">
-                                    Result</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-                            <tr v-for="log in logs" :key="log.id"
-                                class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition">
-                                <td class="px-6 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{{
-                                    formatDate(log.created_at) }}</td>
-                                <td class="px-6 py-3 text-xs font-mono">
-                                    <span
-                                        :class="log.status_code >= 200 && log.status_code < 300 ? 'text-green-600' : 'text-red-600'">{{
-                                        log.status_code || '-' }}</span>
-                                </td>
-                                <td class="px-6 py-3 text-xs font-mono text-gray-500 dark:text-slate-400">{{ log.latency
-                                    }}ms</td>
-                                <td class="px-6 py-3 text-xs">
-                                    <span v-if="log.is_fail"
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                                        {{ log.reason || 'Failed' }}
-                                    </span>
-                                    <span v-else
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                                        Normal
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr v-if="logs.length === 0 && !logsLoading">
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-400 dark:text-slate-500">暂无日志记录
-                                </td>
-                            </tr>
-                            <tr v-if="logsLoading">
-                                <td colspan="4" class="px-6 py-12 text-center">
-                                    <i class="fas fa-circle-notch fa-spin text-blue-500 text-xl"></i>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- 日志表格 -->
+                    <div class="flex-1 overflow-y-auto p-0">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-900/50 sticky top-0 z-10">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                                        Time</th>
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                                        Latency</th>
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                                        Result</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700/50">
+                                <tr v-for="log in logs" :key="log.id"
+                                    class="hover:bg-white/5 transition">
+                                    <td class="px-6 py-3 text-xs text-slate-400 whitespace-nowrap">{{
+                                        formatDate(log.created_at) }}</td>
+                                    <td class="px-6 py-3 text-xs font-mono">
+                                        <span
+                                            :class="log.status_code >= 200 && log.status_code < 300 ? 'text-green-600' : 'text-red-600'">{{
+                                            log.status_code || '-' }}</span>
+                                    </td>
+                                    <td class="px-6 py-3 text-xs font-mono text-slate-400">{{ log.latency
+                                        }}ms</td>
+                                    <td class="px-6 py-3 text-xs">
+                                        <span v-if="log.is_fail"
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500/15 text-red-400">
+                                            {{ log.reason || 'Failed' }}
+                                        </span>
+                                        <span v-else
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/15 text-green-400">
+                                            Normal
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr v-if="logs.length === 0 && !logsLoading">
+                                    <td colspan="4" class="px-6 py-12 text-center text-slate-500">暂无日志记录
+                                    </td>
+                                </tr>
+                                <tr v-if="logsLoading">
+                                    <td colspan="4" class="px-6 py-12 text-center">
+                                        <i class="fas fa-circle-notch fa-spin text-green-500 text-xl"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </transition>
@@ -542,159 +487,299 @@
         <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100"
             leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
             <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <!-- 遗罩 -->
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showAddModal = false"></div>
-                <!-- 对话框 -->
-                <div class="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 flex flex-col overflow-hidden"
-                    style="animation:modal-in 0.2s ease-out">
+                <div class="relative w-full max-w-2xl glass rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                    style="animation:modal-in 0.25s ease-out">
+
                     <!-- 头部 -->
-                    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-plus text-xs text-green-600 dark:text-green-400"></i>
-                            </div>
-                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">添加监控</h3>
-                        </div>
-                        <button @click="showAddModal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <!-- 表单 -->
-                    <div class="p-6 space-y-4 overflow-y-auto">
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 sm:col-span-5">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">网站名称</label>
-                                <input v-model="newMonitor.name" placeholder="例如: Google" autofocus
-                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none">
-                            </div>
-                            <div class="col-span-12 sm:col-span-7">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">URL 地址</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                        <i class="fas fa-link text-xs"></i>
-                                    </span>
-                                    <input v-model="newMonitor.url" placeholder="https://example.com" @keyup.enter="addMonitor"
-                                        class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg pl-8 pr-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none font-mono">
+                    <div class="px-8 py-5 border-b border-white/5 bg-gradient-to-r from-green-900/15 to-transparent">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-green-500/15 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-satellite-dish text-green-400"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">添加新监控</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5">填写站点信息，系统将自动开始检测</p>
                                 </div>
                             </div>
-                            <div class="col-span-12 sm:col-span-6">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">关键词验证 <span class="text-gray-300">可选</span></label>
-                                <input v-model="newMonitor.keyword" placeholder="页面必须包含的内容"
-                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none">
-                            </div>
-                            <div class="col-span-12 sm:col-span-6">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">User-Agent <span class="text-gray-300">可选</span></label>
-                                <input v-model="newMonitor.user_agent" placeholder="默认: Uptime-Monitor/1.0"
-                                    class="input-transition w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm dark:bg-slate-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-900 outline-none font-mono">
-                            </div>
-                            <!-- 功能开关 -->
-                            <div class="col-span-12 flex flex-wrap items-center gap-5 pt-1 border-t border-gray-100 dark:border-slate-700">
-                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
-                                    <input type="checkbox" v-model="newMonitor.check_ssl" class="w-4 h-4 rounded accent-green-500">
-                                    <i class="fas fa-lock text-xs text-gray-400"></i> 检测 SSL 证书
-                                </label>
-                                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer select-none">
-                                    <input type="checkbox" v-model="newMonitor.check_domain" class="w-4 h-4 rounded accent-green-500">
-                                    <i class="fas fa-globe text-xs text-gray-400"></i> 检测域名到期
-                                </label>
-                                <span class="text-xs text-gray-400">告警频率可添加后配置</span>
-                            </div>
+                            <button @click="showAddModal = false" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                                <i class="fas fa-times text-lg"></i>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- 表单内容 -->
+                    <div class="px-8 py-6 space-y-6 overflow-y-auto max-h-[65vh]">
+
+                        <!-- 基础信息区 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-green-500"></i> 基础信息
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-2">网站名称 <span class="text-red-400">*</span></label>
+                                    <input v-model="newMonitor.name" placeholder="例如: 我的博客" autofocus
+                                        class="input-field w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-2">URL 地址 <span class="text-red-400">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
+                                            <i class="fas fa-link text-xs"></i>
+                                        </span>
+                                        <input v-model="newMonitor.url" placeholder="https://example.com" @keyup.enter="addMonitor"
+                                            class="input-field w-full border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none font-mono placeholder-slate-600">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 监测频率选择 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                                <i class="fas fa-clock text-cyan-400"></i> 监测频率
+                            </h4>
+                            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                <label v-for="opt in [
+                                    {value: 60, label: '1 分钟'},
+                                    {value: 180, label: '3 分钟'},
+                                    {value: 300, label: '5 分钟'},
+                                    {value: 600, label: '10 分钟'},
+                                    {value: 900, label: '15 分钟'},
+                                    {value: 1800, label: '30 分钟'},
+                                ]" :key="opt.value"
+                                    class="flex flex-col items-center justify-center py-2.5 rounded-xl border-2 cursor-pointer transition-all text-center"
+                                    :class="Number(newMonitor.interval) === opt.value
+                                        ? 'border-green-500 bg-green-900/20 text-green-400'
+                                        : 'border-slate-700 text-slate-400 hover:border-green-500/40'">
+                                    <input type="radio" :value="opt.value" v-model="newMonitor.interval" class="sr-only">
+                                    <span class="text-sm font-bold">{{ opt.label }}</span>
+                                </label>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2">建议 5 分钟，更高频率会加快 Cloudflare Worker 配额消耗</p>
+                        </div>
+
+                        <!-- 高级选项区 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                                <i class="fas fa-cog text-slate-400"></i> 高级选项
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                                        关键词验证 <span class="text-xs font-normal text-slate-500">可选</span>
+                                    </label>
+                                    <input v-model="newMonitor.keyword" placeholder="页面必须包含的关键词"
+                                        class="input-field w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600">
+                                    <p class="text-xs text-slate-500 mt-1.5">响应内容中必须包含此关键词才算正常</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-2">
+                                        User-Agent <span class="text-xs font-normal text-slate-500">可选</span>
+                                    </label>
+                                    <input v-model="newMonitor.user_agent" placeholder="Uptime-Monitor/1.0"
+                                        class="input-field w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none font-mono placeholder-slate-600">
+                                    <p class="text-xs text-slate-500 mt-1.5">自定义请求的 User-Agent 头</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 检测功能开关区 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                                <i class="fas fa-shield-alt text-slate-400"></i> 检测功能
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label class="flex items-center gap-3 p-4 rounded-xl border border-slate-700 hover:border-green-500/50 cursor-pointer select-none transition-colors bg-slate-900/50 group">
+                                    <input type="checkbox" v-model="newMonitor.check_ssl" class="w-5 h-5 rounded accent-green-500">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 bg-yellow-500/15 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-lock text-yellow-400 text-xs"></i>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium text-slate-300">SSL 证书</span>
+                                            <p class="text-xs text-slate-500">自动检测证书有效期</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-3 p-4 rounded-xl border border-slate-700 hover:border-green-500/50 cursor-pointer select-none transition-colors bg-slate-900/50 group">
+                                    <input type="checkbox" v-model="newMonitor.check_domain" class="w-5 h-5 rounded accent-green-500">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 bg-blue-500/15 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-globe text-blue-400 text-xs"></i>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium text-slate-300">域名到期</span>
+                                            <p class="text-xs text-slate-500">自动查询注册到期时间</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                                <i class="fas fa-lightbulb text-yellow-400/60 text-[10px]"></i>
+                                告警通知频率可在添加后通过「配置」按钮精细调整
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- 底部按钮 -->
-                    <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/30 dark:bg-slate-900/30 flex justify-end gap-3">
-                        <button @click="showAddModal = false"
-                            class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
-                            取消
-                        </button>
-                        <button @click="addMonitor" :disabled="submitting"
-                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
-                            <i v-if="submitting" class="fas fa-spinner fa-spin text-xs"></i>
-                            <i v-else class="fas fa-paper-plane text-xs"></i>
-                            {{ submitting ? '添加中...' : '开始监控' }}
-                        </button>
+                    <div class="px-8 py-5 border-t border-white/5 bg-slate-900/30 flex items-center justify-between">
+                        <p class="text-xs text-slate-600 hidden sm:block">
+                            <i class="fas fa-keyboard mr-1"></i> Enter 快速提交
+                        </p>
+                        <div class="flex gap-3 ml-auto">
+                            <button @click="showAddModal = false"
+                                class="px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-slate-700">
+                                取消
+                            </button>
+                            <button @click="addMonitor" :disabled="submitting"
+                                class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                                <i v-if="submitting" class="fas fa-spinner fa-spin text-xs"></i>
+                                <i v-else class="fas fa-rocket text-xs"></i>
+                                {{ submitting ? '添加中...' : '开始监控' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </transition>
 
-        <!-- 遮罩层 -->
-        <div v-if="showLogs || showConfig" @click="showLogs = false; showConfig = false"
-            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"></div>
+        <!-- 配置弹窗 -->
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+            <div v-if="showConfig" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showConfig = false"></div>
+                <div class="relative w-full max-w-xl glass rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                    style="animation:modal-in 0.25s ease-out; max-height: 85vh">
 
-        <!-- 配置面板（侧边抽屉，与日志抽屉同样风格）-->
-        <transition enter-active-class="transition transform duration-300 ease-in-out"
-            enter-from-class="translate-x-full" enter-to-class="translate-x-0"
-            leave-active-class="transition transform duration-300 ease-in-out" leave-from-class="translate-x-0"
-            leave-to-class="translate-x-full">
-            <div v-if="showConfig"
-                class="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-slate-800 shadow-2xl z-50 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-900">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ configTarget?.name }}</h3>
-                        <p class="text-xs text-gray-500 font-mono mt-1">功能开关与通知配置</p>
-                    </div>
-                    <button @click="showConfig = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                    <!-- 功能开关 -->
-                    <div>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">检测功能</h4>
-                        <div class="space-y-3">
-                            <label class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-900 cursor-pointer">
-                                <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-                                    <i class="fas fa-lock text-blue-400 w-4"></i>
-                                    <span>SSL 证书到期检测</span>
-                                </div>
-                                <input type="checkbox" v-model="configForm.check_ssl"
-                                    class="w-4 h-4 rounded accent-blue-500">
-                            </label>
-                            <label class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-900 cursor-pointer">
-                                <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-                                    <i class="fas fa-globe text-green-400 w-4"></i>
-                                    <span>域名到期检测</span>
-                                </div>
-                                <input type="checkbox" v-model="configForm.check_domain"
-                                    class="w-4 h-4 rounded accent-blue-500">
-                            </label>
+                    <!-- 头部 -->
+                    <div class="px-8 py-5 border-b border-white/5 bg-gradient-to-r from-purple-900/15 to-transparent flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-500/15 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-sliders-h text-purple-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">{{ configTarget?.name }}</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">功能开关与通知配置</p>
+                            </div>
                         </div>
+                        <button @click="showConfig = false" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
                     </div>
 
-                    <!-- 告警静默窗口 -->
-                    <div>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">告警通知频率</h4>
-                        <p class="text-xs text-gray-400 mb-4">同一问题在窗口时间内只发送一次告警。每项独立计时。</p>
-                        <div class="space-y-4">
-                            <div v-for="item in silenceItems" :key="item.key">
-                                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
-                                    <i :class="item.icon + ' w-3'"></i>
-                                    <span>{{ item.label }}</span>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                        <!-- 基础信息 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                                <i class="fas fa-edit text-green-500 text-[10px]"></i> 基础信息
+                            </h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">网站名称</label>
+                                    <input v-model="configForm.name"
+                                        class="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none">
                                 </div>
-                                <div class="grid grid-cols-5 gap-1.5">
-                                    <label v-for="opt in silenceOptions" :key="opt.value"
-                                        class="flex flex-col items-center justify-center py-2 rounded-lg border-2 cursor-pointer transition-all text-center"
-                                        :class="configForm[item.key] === opt.value
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                                            : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:border-blue-300'">
-                                        <input type="radio" :value="opt.value" v-model="configForm[item.key]" class="sr-only">
-                                        <span class="text-sm font-bold">{{ opt.label }}</span>
-                                    </label>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">URL 地址</label>
+                                    <input v-model="configForm.url"
+                                        class="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none font-mono">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-400 mb-1">关键词验证 <span class="text-slate-600">可选</span></label>
+                                        <input v-model="configForm.keyword" placeholder="留空则不检测"
+                                            class="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-400 mb-1">User-Agent <span class="text-slate-600">可选</span></label>
+                                        <input v-model="configForm.user_agent" placeholder="Uptime-Monitor/1.0"
+                                            class="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none font-mono text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 功能开关 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">检测功能</h4>
+                            <div class="space-y-3">
+                                <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 cursor-pointer">
+                                    <div class="flex items-center gap-2 text-sm text-slate-300">
+                                        <i class="fas fa-lock text-blue-400 w-4"></i>
+                                        <span>SSL 证书到期检测</span>
+                                    </div>
+                                    <input type="checkbox" v-model="configForm.check_ssl"
+                                        class="w-4 h-4 rounded accent-green-500">
+                                </label>
+                                <label class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 cursor-pointer">
+                                    <div class="flex items-center gap-2 text-sm text-slate-300">
+                                        <i class="fas fa-globe text-green-400 w-4"></i>
+                                        <span>域名到期检测</span>
+                                    </div>
+                                    <input type="checkbox" v-model="configForm.check_domain"
+                                        class="w-4 h-4 rounded accent-green-500">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 监测频率 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">监测频率</h4>
+                            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                                <label v-for="opt in [
+                                    {value: 60, label: '1 min'},
+                                    {value: 180, label: '3 min'},
+                                    {value: 300, label: '5 min'},
+                                    {value: 600, label: '10 min'},
+                                    {value: 900, label: '15 min'},
+                                    {value: 1800, label: '30 min'},
+                                ]" :key="opt.value"
+                                    class="flex flex-col items-center justify-center py-2 rounded-lg border-2 cursor-pointer transition-all text-center"
+                                    :class="Number(configForm.interval) === opt.value
+                                        ? 'border-green-500 bg-green-900/20 text-green-400'
+                                        : 'border-slate-700 text-slate-400 hover:border-green-500/40'">
+                                    <input type="radio" :value="opt.value" v-model="configForm.interval" class="sr-only">
+                                    <span class="text-sm font-bold">{{ opt.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 告警静默窗口 -->
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">告警通知频率</h4>
+                            <p class="text-xs text-slate-500 mb-4">同一问题在窗口时间内只发送一次告警。每项独立计时。</p>
+                            <div class="space-y-4">
+                                <div v-for="item in silenceItems" :key="item.key">
+                                    <div class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                        <i :class="item.icon + ' w-3'"></i>
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                    <div class="grid grid-cols-5 gap-1.5">
+                                        <label v-for="opt in silenceOptions" :key="opt.value"
+                                            class="flex flex-col items-center justify-center py-2 rounded-lg border-2 cursor-pointer transition-all text-center"
+                                            :class="configForm[item.key] === opt.value
+                                                ? 'border-green-500 bg-green-900/20 text-green-400'
+                                                : 'border-slate-700 text-slate-400 hover:border-green-500/40'">
+                                            <input type="radio" :value="opt.value" v-model="configForm[item.key]" class="sr-only">
+                                            <span class="text-sm font-bold">{{ opt.label }}</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="p-6 border-t border-gray-200 dark:border-slate-700">
-                    <button @click="saveConfig" :disabled="configSaving"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
-                        <i v-if="configSaving" class="fas fa-spinner fa-spin"></i>
-                        <i v-else class="fas fa-save"></i>
-                        {{ configSaving ? '保存中...' : '保存配置' }}
-                    </button>
+                    <!-- 底部保存按钮 -->
+                    <div class="px-6 py-4 border-t border-white/5 bg-slate-900/30">
+                        <button @click="saveConfig" :disabled="configSaving"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
+                            <i v-if="configSaving" class="fas fa-spinner fa-spin"></i>
+                            <i v-else class="fas fa-save"></i>
+                            {{ configSaving ? '保存中...' : '保存配置' }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </transition>
@@ -705,24 +790,201 @@
             <div v-if="confirmModal.show"
                 class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                 <div
-                    class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+                    class="glass w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
                     <div class="p-6">
                         <div
-                            class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            class="w-12 h-12 bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">确认操作</h3>
-                        <p class="text-gray-500 dark:text-slate-400 text-sm text-center">{{ confirmModal.message }}</p>
+                        <h3 class="text-lg font-bold text-white text-center mb-2">确认操作</h3>
+                        <p class="text-slate-400 text-sm text-center">{{ confirmModal.message }}</p>
                     </div>
                     <div class="px-6 pb-6 flex gap-3">
                         <button @click="handleConfirm(false)"
-                            class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition font-medium text-sm">
+                            class="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-white/5 transition font-medium text-sm cursor-pointer">
                             取消
                         </button>
                         <button @click="handleConfirm(true)"
-                            class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-sm transition shadow-sm">
+                            class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium text-sm transition shadow-sm cursor-pointer">
                             确认删除
                         </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- ═══════ 通知渠道管理弹窗 ═══════ -->
+        <transition name="fade">
+            <div v-if="showChannels" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)" @click.self="showChannels = false">
+                <div class="glass rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+                    <!-- 头部 -->
+                    <div class="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fas fa-bell text-green-400"></i> 通知渠道管理
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">配置告警通知的推送渠道</p>
+                        </div>
+                        <button @click="showChannels = false" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <!-- 渠道列表 -->
+                        <div v-if="!channelEditing">
+                            <!-- 空状态 -->
+                            <div v-if="channels.length === 0 && !channelsLoading" class="text-center py-12">
+                                <i class="fas fa-bell-slash text-3xl text-slate-600 mb-3"></i>
+                                <p class="text-slate-500 text-sm">暂无通知渠道</p>
+                                <p class="text-slate-600 text-xs mt-1">添加渠道后，告警会自动推送到配置的平台</p>
+                            </div>
+                            <!-- 加载 -->
+                            <div v-if="channelsLoading" class="space-y-3">
+                                <div v-for="i in 2" :key="i" class="h-16 rounded-xl bg-slate-800/50 animate-pulse"></div>
+                            </div>
+                            <!-- 渠道卡片 -->
+                            <div v-for="ch in channels" :key="ch.id" class="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 mb-2.5 hover:border-slate-600/50 transition-all group">
+                                <!-- 类型图标 -->
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg"
+                                    :class="channelTypeInfo[ch.type]?.bg || 'bg-slate-700'">
+                                    <span>{{ channelTypeInfo[ch.type]?.icon || '🔔' }}</span>
+                                </div>
+                                <!-- 信息 -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-white text-sm truncate">{{ ch.name }}</span>
+                                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400">{{ channelTypeInfo[ch.type]?.label || ch.type }}</span>
+                                    </div>
+                                </div>
+                                <!-- 启用开关 -->
+                                <button @click="toggleChannel(ch)" class="w-10 h-5 rounded-full transition-all cursor-pointer relative shrink-0"
+                                    :class="ch.enabled ? 'bg-green-600' : 'bg-slate-600'">
+                                    <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
+                                        :class="ch.enabled ? 'left-[22px]' : 'left-0.5'"></span>
+                                </button>
+                                <!-- 操作 -->
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button @click="testChannel(ch)" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition cursor-pointer" title="测试">
+                                        <i class="fas fa-play text-[10px]"></i>
+                                    </button>
+                                    <button @click="editChannel(ch)" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition cursor-pointer" title="编辑">
+                                        <i class="fas fa-pen text-[10px]"></i>
+                                    </button>
+                                    <button @click="deleteChannel(ch)" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer" title="删除">
+                                        <i class="fas fa-trash text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 添加按钮 -->
+                            <button @click="channelEditing = { type: 'dingtalk', name: '', config: {} }"
+                                class="w-full mt-4 py-3 rounded-xl border-2 border-dashed border-slate-700 text-slate-500 hover:border-green-500/40 hover:text-green-400 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer">
+                                <i class="fas fa-plus text-xs"></i> 添加通知渠道
+                            </button>
+                        </div>
+
+                        <!-- 添加/编辑表单 -->
+                        <div v-else>
+                            <button @click="channelEditing = null" class="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition mb-5 cursor-pointer">
+                                <i class="fas fa-arrow-left text-xs"></i> 返回列表
+                            </button>
+                            <h4 class="text-white font-bold mb-5">{{ channelEditing.id ? '编辑渠道' : '添加渠道' }}</h4>
+
+                            <!-- 渠道类型选择 -->
+                            <div class="mb-5" v-if="!channelEditing.id">
+                                <label class="block text-xs text-slate-400 mb-2">渠道类型</label>
+                                <div class="grid grid-cols-5 gap-2">
+                                    <button v-for="(info, key) in channelTypeInfo" :key="key" @click="channelEditing.type = key; channelEditing.config = {}"
+                                        class="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all cursor-pointer text-center"
+                                        :class="channelEditing.type === key ? 'border-green-500 bg-green-900/20' : 'border-slate-700 hover:border-green-500/30'">
+                                        <span class="text-lg">{{ info.icon }}</span>
+                                        <span class="text-[11px] font-medium" :class="channelEditing.type === key ? 'text-green-400' : 'text-slate-400'">{{ info.label }}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 渠道名称 -->
+                            <div class="mb-4">
+                                <label class="block text-xs text-slate-400 mb-2">渠道名称</label>
+                                <input v-model="channelEditing.name" placeholder="例如：研发群机器人"
+                                    class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600">
+                            </div>
+
+                            <!-- 按类型动态配置 -->
+                            <!-- 钉钉 -->
+                            <template v-if="channelEditing.type === 'dingtalk'">
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Access Token</label>
+                                    <input v-model="channelEditing.config.access_token" placeholder="机器人的 access_token"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">签名密钥 (Secret)</label>
+                                    <input v-model="channelEditing.config.secret" placeholder="加签的 Secret" type="password"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                            </template>
+                            <!-- 企业微信 -->
+                            <template v-if="channelEditing.type === 'wecom'">
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Webhook Key</label>
+                                    <input v-model="channelEditing.config.key" placeholder="机器人 Webhook 的 key 参数"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                    <p class="text-xs text-slate-500 mt-1.5">从企业微信群机器人设置中获取 Webhook URL 中的 key 值</p>
+                                </div>
+                            </template>
+                            <!-- 飞书 -->
+                            <template v-if="channelEditing.type === 'feishu'">
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Webhook URL</label>
+                                    <input v-model="channelEditing.config.webhook_url" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">签名密钥 <span class="text-slate-600">可选</span></label>
+                                    <input v-model="channelEditing.config.secret" placeholder="签名验证的 Secret" type="password"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                            </template>
+                            <!-- Telegram -->
+                            <template v-if="channelEditing.type === 'telegram'">
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Bot Token</label>
+                                    <input v-model="channelEditing.config.bot_token" placeholder="从 @BotFather 获取" type="password"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Chat ID</label>
+                                    <input v-model="channelEditing.config.chat_id" placeholder="群组或频道的 Chat ID"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                            </template>
+                            <!-- 自定义 Webhook -->
+                            <template v-if="channelEditing.type === 'webhook'">
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">Webhook URL</label>
+                                    <input v-model="channelEditing.config.url" placeholder="https://your-server.com/webhook"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">HTTP Method <span class="text-slate-600">默认 POST</span></label>
+                                    <input v-model="channelEditing.config.method" placeholder="POST"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs text-slate-400 mb-2">自定义 Headers <span class="text-slate-600">JSON 格式，可选</span></label>
+                                    <input v-model="channelEditing.config.headers" placeholder='{"Authorization": "Bearer xxx"}'
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-800/80 text-white focus:border-green-500 outline-none placeholder-slate-600 font-mono">
+                                </div>
+                            </template>
+
+                            <!-- 保存按钮 -->
+                            <button @click="saveChannel" :disabled="channelSaving"
+                                class="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2">
+                                {{ channelSaving ? '保存中...' : (channelEditing.id ? '保存修改' : '添加渠道') }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -733,9 +995,9 @@
             <div v-for="toast in toasts" :key="toast.id"
                 class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium max-w-xs transition-all toast-enter"
                 :class="{
-                'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/40 dark:border-green-500/40 dark:text-green-300': toast.type === 'success',
-                'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/40 dark:border-red-500/40 dark:text-red-300': toast.type === 'error',
-                'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/40 dark:border-blue-500/40 dark:text-blue-300': toast.type === 'info',
+                'bg-green-900/40 border-green-500/30 text-green-300': toast.type === 'success',
+                'bg-red-900/40 border-red-500/30 text-red-300': toast.type === 'error',
+                'bg-blue-900/40 border-blue-500/30 text-blue-300': toast.type === 'info',
             }">
                 <i :class="{
                 'fas fa-check-circle': toast.type === 'success',
@@ -760,7 +1022,7 @@
                 const showLogs = ref(false);
                 const logsLoading = ref(false);
                 const currentMonitor = ref(null);
-                const newMonitor = ref({ name: '', url: '', keyword: '', user_agent: '', check_ssl: true, check_domain: true, alert_silence_hours: '24' });
+                const newMonitor = ref({ name: '', url: '', keyword: '', user_agent: '', interval: 300, check_ssl: true, check_domain: true, alert_silence_hours: '24' });
                 const showAddModal = ref(false);
                 const loading = ref(false);
                 const submitting = ref(false);
@@ -774,7 +1036,7 @@
                 // 配置面板
                 const showConfig = ref(false);
                 const configTarget = ref(null);
-                const configForm = ref({ check_ssl: true, check_domain: true, alert_silence_uptime: 24, alert_silence_ssl: 24, alert_silence_domain: 24 });
+                const configForm = ref({ name: '', url: '', keyword: '', user_agent: '', interval: 300, check_ssl: true, check_domain: true, alert_silence_uptime: 24, alert_silence_ssl: 24, alert_silence_domain: 24 });
                 const configSaving = ref(false);
                 const silenceOptions = [
                     { value: 1,  label: '1h'  },
@@ -792,6 +1054,11 @@
                 const openConfig = (m) => {
                     configTarget.value = m;
                     configForm.value = {
+                        name: m.name || '',
+                        url: m.url || '',
+                        keyword: m.keyword || '',
+                        user_agent: m.user_agent || '',
+                        interval: m.interval || 300,
                         check_ssl: m.check_ssl !== 0,
                         check_domain: m.check_domain !== 0,
                         alert_silence_uptime:  m.alert_silence_uptime  ?? 24,
@@ -806,6 +1073,11 @@
                     configSaving.value = true;
                     try {
                         const body = {
+                            name:                  configForm.value.name,
+                            url:                   configForm.value.url,
+                            keyword:               configForm.value.keyword,
+                            user_agent:            configForm.value.user_agent,
+                            interval:              Number(configForm.value.interval),
                             check_ssl:             configForm.value.check_ssl ? 1 : 0,
                             check_domain:          configForm.value.check_domain ? 1 : 0,
                             alert_silence_uptime:  Number(configForm.value.alert_silence_uptime),
@@ -966,6 +1238,7 @@
                             ...newMonitor.value,
                             check_ssl: newMonitor.value.check_ssl ? 1 : 0,
                             check_domain: newMonitor.value.check_domain ? 1 : 0,
+                            interval: Number(newMonitor.value.interval),
                             alert_silence_hours: Number(newMonitor.value.alert_silence_hours),
                         };
                         const res = await authFetch(`${API_BASE}/monitors`, {
@@ -974,7 +1247,7 @@
                             body: JSON.stringify(body)
                         });
                         if (res.ok) {
-                            newMonitor.value = { name: '', url: '', keyword: '', user_agent: '', check_ssl: true, check_domain: true, alert_silence_hours: '24' };
+                            newMonitor.value = { name: '', url: '', keyword: '', user_agent: '', interval: 300, check_ssl: true, check_domain: true, alert_silence_hours: '24' };
                             showAddModal.value = false;
                             addToast('监控添加成功，正在获取证书信息…', 'success');
                             fetchMonitors();
@@ -1073,6 +1346,115 @@
                     return 'text-green-600 dark:text-green-400';
                 };
 
+                // ═══════ 通知渠道管理 ═══════
+                const showChannels = ref(false);
+                const channels = ref([]);
+                const channelsLoading = ref(false);
+                const channelEditing = ref(null); // null = 列表视图, object = 编辑表单
+                const channelSaving = ref(false);
+
+                const channelTypeInfo = {
+                    dingtalk: { icon: '🔔', label: '钉钉', bg: 'bg-blue-900/40' },
+                    wecom:    { icon: '💬', label: '企业微信', bg: 'bg-green-900/40' },
+                    feishu:   { icon: '🐦', label: '飞书', bg: 'bg-purple-900/40' },
+                    telegram: { icon: '✈️', label: 'Telegram', bg: 'bg-sky-900/40' },
+                    webhook:  { icon: '🔗', label: 'Webhook', bg: 'bg-orange-900/40' },
+                };
+
+                const fetchChannels = async () => {
+                    channelsLoading.value = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/notification-channels`, {
+                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
+                        });
+                        if (res.ok) channels.value = await res.json();
+                    } catch (e) { console.error(e); }
+                    channelsLoading.value = false;
+                };
+
+                const saveChannel = async () => {
+                    const ch = channelEditing.value;
+                    if (!ch.name || !ch.type) { addToast('请填写渠道名称', 'error'); return; }
+                    channelSaving.value = true;
+                    try {
+                        const url = ch.id
+                            ? `${API_BASE}/notification-channels/${ch.id}`
+                            : `${API_BASE}/notification-channels`;
+                        const method = ch.id ? 'PATCH' : 'POST';
+                        const res = await fetch(url, {
+                            method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || ''
+                            },
+                            body: JSON.stringify({ type: ch.type, name: ch.name, config: ch.config })
+                        });
+                        if (res.ok) {
+                            addToast(ch.id ? '渠道已更新' : '渠道已添加', 'success');
+                            channelEditing.value = null;
+                            fetchChannels();
+                        } else {
+                            const data = await res.json();
+                            addToast(data.error || '操作失败', 'error');
+                        }
+                    } catch (e) { addToast('网络错误', 'error'); }
+                    channelSaving.value = false;
+                };
+
+                const editChannel = (ch) => {
+                    // 编辑时需要用新对象，config 可能被脱敏，提示用户重新输入
+                    channelEditing.value = {
+                        id: ch.id,
+                        type: ch.type,
+                        name: ch.name,
+                        config: {} // 密钥字段需要重新输入
+                    };
+                };
+
+                const deleteChannel = async (ch) => {
+                    if (!confirm(`确定删除通知渠道「${ch.name}」？`)) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
+                        });
+                        if (res.ok) { addToast('渠道已删除', 'success'); fetchChannels(); }
+                    } catch (e) { addToast('删除失败', 'error'); }
+                };
+
+                const toggleChannel = async (ch) => {
+                    try {
+                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || ''
+                            },
+                            body: JSON.stringify({ enabled: ch.enabled ? 0 : 1 })
+                        });
+                        if (res.ok) { ch.enabled = ch.enabled ? 0 : 1; }
+                    } catch (e) { addToast('操作失败', 'error'); }
+                };
+
+                const testChannel = async (ch) => {
+                    addToast('正在发送测试消息...', 'info');
+                    try {
+                        const res = await fetch(`${API_BASE}/notification-channels/${ch.id}/test`, {
+                            method: 'POST',
+                            headers: { 'X-Admin-Password': sessionStorage.getItem('uptime_admin_password') || '' }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            addToast('测试消息发送成功！', 'success');
+                        } else {
+                            addToast('测试失败，请检查配置', 'error');
+                        }
+                    } catch (e) { addToast('测试失败', 'error'); }
+                };
+
+                // 监听弹窗打开时加载数据
+                Vue.watch(showChannels, (v) => { if (v) fetchChannels(); });
+
                 onMounted(() => {
                     if (isAuthenticated.value) fetchMonitors();
                 });
@@ -1080,7 +1462,7 @@
                 return {
                     monitors, newMonitor, logs, showLogs, logsLoading, currentMonitor,
                     loading, submitting, inputPassword, isAuthenticated, error,
-                    toasts,
+                    toasts, confirmModal,
                     stats, sparkline, uptimeStats,
                     showAddModal,
                     showConfig, configTarget, configForm, configSaving, silenceOptions, silenceItems,
@@ -1088,6 +1470,10 @@
                     addMonitor, deleteMonitor, viewLogs, fetchMonitors,
                     togglePause, handleConfirm, openConfig, saveConfig,
                     formatDate, getDaysRemaining, getExpiryClass,
+                    // 通知渠道
+                    showChannels, channels, channelsLoading, channelEditing, channelSaving,
+                    channelTypeInfo,
+                    fetchChannels, saveChannel, editChannel, deleteChannel, toggleChannel, testChannel,
                 };
             }
         }).mount('#app');
