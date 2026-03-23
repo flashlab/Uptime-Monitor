@@ -1015,10 +1015,16 @@ async function updateDomainCertInfo(env: Bindings, monitor: Monitor) {
       };
 
       let certs = await fetchCerts(domain);
-      if (certs.length === 0 && domain.split('.').length > 2) {
+      if (domain.split('.').length > 2) {
         const parts = domain.split('.');
         const rootDomain = parts.slice(parts.length - 2).join('.');
-        certs = [...await fetchCerts(rootDomain), ...await fetchCerts(`%.${rootDomain}`)];
+        
+        const [rootCerts, wildcardCerts] = await Promise.all([
+          fetchCerts(rootDomain),
+          fetchCerts(`%25.${rootDomain}`)
+        ]);
+        
+        certs = [...certs, ...rootCerts, ...wildcardCerts];
       }
 
       if (certs.length > 0) {
