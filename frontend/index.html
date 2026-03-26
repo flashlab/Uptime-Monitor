@@ -543,7 +543,14 @@
                         if (res.ok) {
                             monitors.value = await res.json();
                         } else {
-                            error.value = `服务器返回错误 (${res.status})`;
+                            let errorMsg = `服务器返回错误 (${res.status})`;
+                            try {
+                                const errData = await res.json();
+                                if (errData && errData.error) {
+                                    errorMsg = `API 错误: ${errData.error}`;
+                                }
+                            } catch (e) {}
+                            error.value = errorMsg;
                         }
                     } catch (e) {
                         error.value = '无法连接到监控服务，请检查网络连接。';

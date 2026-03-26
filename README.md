@@ -54,26 +54,29 @@
 npx wrangler d1 create uptime-db
 ```
 
-执行后终端会输出类似以下内容，**复制 `database_id`**：
+执行后终端会输出类似以下内容，**请仅复制 `database_id` 的值**：
 
 ```toml
 [[d1_databases]]
-binding = "DB"
+binding = "uptime_db" # 注意：终端输出的 binding 取决于你创建的名字
 database_name = "uptime-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # ← 复制这里
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # ← 复制这里的 ID 即可
 ```
 
 ---
 
 ### 第二步：配置 wrangler.toml
 
-打开 `worker/wrangler.toml`，将第一步的 `database_id` 填入：
+打开 `worker/wrangler.toml`，找到 `[[d1_databases]]` 配置块，**仅将 `database_id` 替换为你刚刚复制的值**：
+
+> [!WARNING]
+> **切记**：`binding` 必须保持为 `"DB"`！请勿直接复制终端的全部输出覆盖这里的配置，否则后端代码会因为找不到绑定的数据库而报 500 错误。
 
 ```toml
 [[d1_databases]]
-binding = "DB"
-database_name = "uptime-db"
-database_id = "你的database_id"   # ← 替换为上一步复制的值
+binding = "DB"                     # ← 绝对不能修改！代码中写死了调用 env.DB
+database_name = "uptime-db"        # 也可以换成你实际创建的名字，不改不影响运行
+database_id = "你的database_id"   # ← 仅替换这里为上一步复制的 ID
 ```
 
 再添加管理后台的登录口令（二选一，都填时 API Key 优先）：
@@ -90,6 +93,7 @@ ADMIN_API_KEY = "你自定义的登录口令"     # 推荐，任意字符串
 
 ```bash
 cd worker
+# 注意：如果第一步你创建的名字不是 uptime-db，请替换下方命令中的 uptime-db 为你实际的名字
 npx wrangler d1 execute uptime-db --remote --file=schema.sql
 ```
 
@@ -197,6 +201,11 @@ https://你的项目名.pages.dev/
 
 **Q：访问 `/api/monitors/public` 仍然显示前端页面？**  
 说明 `WORKER_URL` 未生效。请确认环境变量已保存后**重新部署**一次前端。
+
+**Q：后端抛出 500 错误，或提示 `Cannot read properties of undefined (reading 'prepare')`？**  
+这是由于 D1 数据库没有成功绑定到 Worker 上。
+* **如果你是通过命令行部署的**：请检查 `wrangler.toml` 里的 `binding` 必须是 `"DB"` 且 `database_id` 没有填错，然后重新运行 `npx wrangler deploy`。
+* **如果你是在 Cloudflare 面板网页上手动部署的**：你需要进入该 Worker项目 → Settings → Bindings，手动添加一个 **D1 Database** 绑定，变量名（Variable Name）必须写 `"DB"`，并选择你创建好的 D1 数据库，最后重新部署使其生效。
 
 ---
 
