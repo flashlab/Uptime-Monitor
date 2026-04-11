@@ -36,6 +36,7 @@ CREATE TABLE monitors (
   last_alert_uptime TEXT,                   -- 可用性最近告警时间
   last_alert_ssl TEXT,                      -- SSL 证书最近告警时间
   last_alert_domain TEXT,                   -- 域名到期最近告警时间
+  sort_order INTEGER DEFAULT 0,             -- 拖拽排序顺序
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -67,6 +68,10 @@ CREATE TABLE incidents (
   description TEXT,                -- 详细描述
   severity TEXT DEFAULT 'info',    -- info / warning / critical
   status TEXT DEFAULT 'active',    -- active / resolved
+  type TEXT DEFAULT 'incident',    -- incident / maintenance
+  scheduled_start DATETIME,        -- 计划维护开始时间
+  scheduled_end DATETIME,          -- 计划维护结束时间
+  affected_monitors TEXT,          -- 受影响的监控ID，逗号分隔
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   resolved_at DATETIME             -- 解决时间（null=未解决）
@@ -77,6 +82,16 @@ CREATE TABLE settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 每日可用率汇总表（90天可用性条用）
+CREATE TABLE IF NOT EXISTS daily_uptime (
+  monitor_id INTEGER NOT NULL,
+  date TEXT NOT NULL,              -- YYYY-MM-DD
+  total_checks INTEGER DEFAULT 0,
+  successful_checks INTEGER DEFAULT 0,
+  avg_latency INTEGER DEFAULT 0,
+  PRIMARY KEY (monitor_id, date)
 );
 
 -- 预置默认配置
@@ -113,3 +128,12 @@ INSERT INTO settings (key, value) VALUES ('site_logo_url', '');
 -- INSERT OR IGNORE INTO settings (key, value) VALUES ('site_title', 'Uptime Monitor');
 -- INSERT OR IGNORE INTO settings (key, value) VALUES ('site_description', '实时监控服务运行状态');
 -- INSERT OR IGNORE INTO settings (key, value) VALUES ('site_logo_url', '');
+
+-- ============================================================
+-- P2 增量迁移（拖拽排序 + 计划维护）
+-- ============================================================
+-- ALTER TABLE monitors ADD COLUMN sort_order INTEGER DEFAULT 0;
+-- ALTER TABLE incidents ADD COLUMN type TEXT DEFAULT 'incident';
+-- ALTER TABLE incidents ADD COLUMN scheduled_start DATETIME;
+-- ALTER TABLE incidents ADD COLUMN scheduled_end DATETIME;
+-- ALTER TABLE incidents ADD COLUMN affected_monitors TEXT;

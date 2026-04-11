@@ -32,6 +32,7 @@ interface Monitor {
   last_alert_uptime: string | null;
   last_alert_ssl: string | null;
   last_alert_domain: string | null;
+  sort_order: number;             // 拖拽排序顺序
   created_at: string;
 }
 
@@ -52,7 +53,7 @@ interface DingTalkResult {
 
 interface NotificationChannel {
   id: number;
-  type: 'dingtalk' | 'wecom' | 'feishu' | 'telegram' | 'webhook';
+  type: 'dingtalk' | 'wecom' | 'feishu' | 'telegram' | 'webhook' | 'email';
   name: string;
   enabled: number;
   config: string;
@@ -65,6 +66,10 @@ interface Incident {
   description: string | null;
   severity: 'info' | 'warning' | 'critical';
   status: 'active' | 'resolved';
+  type: 'incident' | 'maintenance';
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  affected_monitors: string | null;  // 逗号分隔的监控 ID
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -95,7 +100,7 @@ const PROTECTED_ROUTES = ['/monitors', '/notification-channels', '/incidents', '
 app.use('/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next();
   // 公开路由豁免
-  if (c.req.path === '/monitors/public') return await next();
+  if (c.req.path === '/monitors/public' || c.req.path === '/monitors/public/details') return await next();
   if (c.req.path === '/incidents' && c.req.method === 'GET') return await next();
   if (c.req.path === '/settings' && c.req.method === 'GET') return await next();
 
@@ -128,7 +133,7 @@ app.use('/*', async (c, next) => {
 
 app.get('/monitors', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare('SELECT * FROM monitors ORDER BY created_at ASC').all<Monitor>();
+    const { results } = await c.env.DB.prepare('SELECT * FROM monitors ORDER BY sort_order ASC, created_at ASC').all<Monitor>();
     return c.json(results);
   } catch (e: unknown) {
     return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
@@ -138,9 +143,88 @@ app.get('/monitors', async (c) => {
 app.get('/monitors/public', async (c) => {
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT id, name, url, status, last_check, cert_expiry, domain_expiry, paused, tags FROM monitors ORDER BY created_at ASC'
+      'SELECT id, name, url, status, last_check, cert_expiry, domain_expiry, paused, tags FROM monitors ORDER BY sort_order ASC, created_at ASC'
     ).all<Pick<Monitor, 'id' | 'name' | 'url' | 'status' | 'last_check' | 'cert_expiry' | 'domain_expiry' | 'paused' | 'tags'>>();
     return c.json(results);
+  } catch (e: unknown) {
+    return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
+  }
+});
+
+// ── 公开详情 API：含延迟、可用率、90天历史（无需鉴权）──
+app.get('/monitors/public/details', async (c) => {
+  try {
+    const { results: monitors } = await c.env.DB.prepare(
+      'SELECT id, name, url, status, last_check, cert_expiry, domain_expiry, paused, tags FROM monitors ORDER BY sort_order ASC, created_at ASC'
+    ).all();
+    if (!monitors || monitors.length === 0) return c.json({ monitors: [] });
+
+    // 自动建表（兼容未迁移数据库）
+    await c.env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_uptime (
+      monitor_id INTEGER NOT NULL, date TEXT NOT NULL,
+      total_checks INTEGER DEFAULT 0, successful_checks INTEGER DEFAULT 0,
+      avg_latency INTEGER DEFAULT 0, PRIMARY KEY (monitor_id, date)
+    )`).run();
+
+    // 首次运行时回填历史数据
+    const cnt = await c.env.DB.prepare('SELECT COUNT(*) as c FROM daily_uptime').first<{ c: number }>();
+    if (cnt && cnt.c === 0) {
+      await c.env.DB.prepare(`
+        INSERT OR IGNORE INTO daily_uptime (monitor_id, date, total_checks, successful_checks, avg_latency)
+        SELECT monitor_id, date(created_at), COUNT(*), SUM(CASE WHEN is_fail=0 THEN 1 ELSE 0 END),
+               COALESCE(CAST(AVG(CASE WHEN is_fail=0 THEN latency END) AS INTEGER), 0)
+        FROM logs WHERE date(created_at) < date('now') GROUP BY monitor_id, date(created_at)
+      `).run();
+    }
+
+    // 90天每日可用率
+    const { results: dailyRows } = await c.env.DB.prepare(
+      "SELECT monitor_id, date, total_checks, successful_checks FROM daily_uptime WHERE date >= date('now','-90 days') ORDER BY monitor_id, date"
+    ).all();
+
+    // 实时统计（24h/7d/30d 合并查询）
+    const { results: liveRows } = await c.env.DB.prepare(`
+      SELECT monitor_id,
+        SUM(CASE WHEN created_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END) as t24,
+        SUM(CASE WHEN created_at >= datetime('now','-24 hours') AND is_fail=0 THEN 1 ELSE 0 END) as s24,
+        SUM(CASE WHEN created_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) as t7,
+        SUM(CASE WHEN created_at >= datetime('now','-7 days') AND is_fail=0 THEN 1 ELSE 0 END) as s7,
+        COUNT(*) as t30, SUM(CASE WHEN is_fail=0 THEN 1 ELSE 0 END) as s30
+      FROM logs WHERE created_at >= datetime('now','-30 days') GROUP BY monitor_id
+    `).all();
+
+    // 最近延迟（折线图用）
+    const { results: latRows } = await c.env.DB.prepare(
+      'SELECT monitor_id, latency FROM logs WHERE is_fail=0 ORDER BY created_at DESC LIMIT 200'
+    ).all();
+
+    // 组装查找表
+    type DS = { date: string; up: number; total: number };
+    const dMap = new Map<number, DS[]>();
+    for (const r of dailyRows || []) {
+      const id = r.monitor_id as number;
+      if (!dMap.has(id)) dMap.set(id, []);
+      dMap.get(id)!.push({ date: r.date as string, up: r.successful_checks as number, total: r.total_checks as number });
+    }
+    const sMap = new Map<number, Record<string, number>>();
+    for (const r of liveRows || []) sMap.set(r.monitor_id as number, r as Record<string, number>);
+    const lMap = new Map<number, number[]>();
+    for (const r of latRows || []) {
+      const id = r.monitor_id as number;
+      if (!lMap.has(id)) lMap.set(id, []);
+      const a = lMap.get(id)!;
+      if (a.length < 24) a.push(r.latency as number);
+    }
+    for (const [, a] of lMap) a.reverse();
+
+    const pct = (t?: number, s?: number) => t && t > 0 ? Number(((s! / t) * 100).toFixed(1)) : null;
+    const enriched = monitors.map(m => {
+      const id = m.id as number, s = sMap.get(id), lat = lMap.get(id) || [];
+      return { ...m, latency: lat.length > 0 ? lat[lat.length - 1] : null,
+        uptime_24h: pct(s?.t24, s?.s24), uptime_7d: pct(s?.t7, s?.s7), uptime_30d: pct(s?.t30, s?.s30),
+        daily_stats: dMap.get(id) || [], recent_latencies: lat };
+    });
+    return c.json({ monitors: enriched });
   } catch (e: unknown) {
     return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
   }
@@ -369,6 +453,23 @@ app.post('/monitors/batch', async (c) => {
   }
 });
 
+// 拖拽排序 API
+app.put('/monitors/reorder', async (c) => {
+  try {
+    const body = await c.req.json<{ ids: number[] }>();
+    if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
+      return c.json({ error: 'Missing ids array' }, 400);
+    }
+    const stmts = body.ids.map((id, idx) =>
+      c.env.DB.prepare('UPDATE monitors SET sort_order = ? WHERE id = ?').bind(idx, id)
+    );
+    await c.env.DB.batch(stmts);
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
+  }
+});
+
 // ============================================================
 // 事件公告 CRUD
 // ============================================================
@@ -399,13 +500,14 @@ app.get('/incidents/all', async (c) => {
 
 app.post('/incidents', async (c) => {
   try {
-    const body = await c.req.json<{ title: string; description?: string; severity?: string }>();
+    const body = await c.req.json<{ title: string; description?: string; severity?: string; type?: string; scheduled_start?: string; scheduled_end?: string; affected_monitors?: string }>();
     if (!body.title) return c.json({ error: 'Missing title' }, 400);
     const severity = ['info', 'warning', 'critical'].includes(body.severity || '') ? body.severity : 'info';
+    const type = body.type === 'maintenance' ? 'maintenance' : 'incident';
     const now = new Date().toISOString();
     const result = await c.env.DB.prepare(
-      'INSERT INTO incidents (title, description, severity, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(body.title, body.description || null, severity, 'active', now, now).run();
+      'INSERT INTO incidents (title, description, severity, status, type, scheduled_start, scheduled_end, affected_monitors, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(body.title, body.description || null, severity, 'active', type, body.scheduled_start || null, body.scheduled_end || null, body.affected_monitors || null, now, now).run();
     return c.json({ success: true, id: result.meta.last_row_id }, 201);
   } catch (e: unknown) {
     return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
@@ -525,7 +627,7 @@ app.post('/notification-channels', async (c) => {
   try {
     const body = await c.req.json<{ type: string; name: string; config: Record<string, unknown>; enabled?: number }>();
     if (!body.type || !body.name || !body.config) return c.json({ error: 'Missing required fields' }, 400);
-    const validTypes = ['dingtalk', 'wecom', 'feishu', 'telegram', 'webhook'];
+    const validTypes = ['dingtalk', 'wecom', 'feishu', 'telegram', 'webhook', 'email'];
     if (!validTypes.includes(body.type)) return c.json({ error: `Invalid type. Valid: ${validTypes.join(', ')}` }, 400);
     await c.env.DB.prepare('INSERT INTO notification_channels (type, name, enabled, config) VALUES (?, ?, ?, ?)')
       .bind(body.type, body.name, body.enabled ?? 1, JSON.stringify(body.config)).run();
@@ -596,6 +698,30 @@ app.post('/test-alert', async (c) => {
 });
 
 // ============================================================
+// 每日统计聚合
+// ============================================================
+
+async function aggregateDailyUptime(env: Bindings) {
+  console.log('Aggregating daily uptime...');
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_uptime (
+      monitor_id INTEGER NOT NULL, date TEXT NOT NULL,
+      total_checks INTEGER DEFAULT 0, successful_checks INTEGER DEFAULT 0,
+      avg_latency INTEGER DEFAULT 0, PRIMARY KEY (monitor_id, date)
+    )`).run();
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO daily_uptime (monitor_id, date, total_checks, successful_checks, avg_latency)
+      SELECT monitor_id, date(created_at), COUNT(*), SUM(CASE WHEN is_fail=0 THEN 1 ELSE 0 END),
+             COALESCE(CAST(AVG(CASE WHEN is_fail=0 THEN latency END) AS INTEGER), 0)
+      FROM logs WHERE date(created_at) < date('now') AND date(created_at) >= date('now','-90 days')
+      GROUP BY monitor_id, date(created_at)
+    `).run();
+    await env.DB.prepare("DELETE FROM daily_uptime WHERE date < date('now','-90 days')").run();
+    console.log('Daily uptime aggregation completed.');
+  } catch (e) { console.error('Daily uptime aggregation error:', e); }
+}
+
+// ============================================================
 // 定时任务入口
 // ============================================================
 
@@ -613,6 +739,7 @@ async function runScheduledTasks(env: Bindings) {
   if (hour === 2) {
     tasks.push(cleanupLogs(env));
     tasks.push(checkExpiryAlerts(env));
+    tasks.push(aggregateDailyUptime(env));
   }
   await Promise.all(tasks);
 }
@@ -721,6 +848,25 @@ async function performCheck(monitor: Monitor, env: Bindings) {
   // 状态机
   let newStatus: Monitor['status'] = monitor.status;
   let newRetryCount = monitor.retry_count;
+
+  // 检查是否在计划维护窗口内（如果是，跳过告警）
+  try {
+    const { results: activeMaint } = await env.DB.prepare(
+      "SELECT affected_monitors FROM incidents WHERE type = 'maintenance' AND status = 'active' AND scheduled_start <= datetime('now') AND scheduled_end >= datetime('now')"
+    ).all<{ affected_monitors: string | null }>();
+    if (activeMaint && activeMaint.length > 0) {
+      const inMaintenance = activeMaint.some(m => {
+        if (!m.affected_monitors) return false;
+        return m.affected_monitors.split(',').map(s => s.trim()).includes(String(monitor.id));
+      });
+      if (inMaintenance) {
+        // 在维护窗口内，跳过状态变更告警
+        await env.DB.prepare('UPDATE monitors SET last_check = ?, status = ?, retry_count = ? WHERE id = ?')
+          .bind(new Date().toISOString(), newStatus, newRetryCount, monitor.id).run();
+        return;
+      }
+    }
+  } catch { /* ignore maintenance check errors */ }
 
   const silenceHoursUptime = monitor.alert_silence_uptime ?? 24;
   const lastAlertUptimeMs = monitor.last_alert_uptime ? new Date(monitor.last_alert_uptime).getTime() : 0;
@@ -893,6 +1039,7 @@ async function sendToChannel(channel: NotificationChannel, monitor: Pick<Monitor
       case 'feishu':   return await sendFeishu(cfg, monitor, type, detail);
       case 'telegram': return await sendTelegram(cfg, monitor, type, detail);
       case 'webhook':  return await sendWebhook(cfg, monitor, type, detail);
+      case 'email':    return await sendEmail(cfg, monitor, type, detail);
       default: console.warn(`Unknown channel type: ${channel.type}`); return false;
     }
   } catch (e) {
@@ -913,15 +1060,19 @@ async function sendDingTalk(cfg: Record<string, string>, monitor: Pick<Monitor, 
   const webhookUrl = `https://oapi.dingtalk.com/robot/send?access_token=${access_token}&timestamp=${timestamp}&sign=${signEncoded}`;
   const isDown = type === 'DOWN';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
-  const statusLabel = isDown ? '<font color="#cc0000">⚠ 故障</font>' : '<font color="#00aa55">✅ 恢复正常</font>';
+  const title = isDown ? '🚨 突发！服务又双叒叕挂了 (╯°□°)╯︵ ┻━┻' : '🎉 仰卧起坐成功！服务满血复活 ヾ(≧▽≦*)o';
+  const statusLabel = isDown ? '<font color="#cc0000">💥 彻底躺平 (DOWN)</font>' : '<font color="#00aa55">✨ 支楞起来了 (UP)</font>';
   const markdownText = [
-    `## ${title}`, ``, `| | |`, `| --- | --- |`,
-    `| **监控名称** | ${monitor.name} |`,
-    `| **监控地址** | [${monitor.url}](${monitor.url}) |`,
-    `| **当前状态** | ${statusLabel} |`,
-    `| **详细信息** | ${detail} |`,
-    ``, `---`, `<font color="#999999">🕐 ${time} &nbsp;·&nbsp; Uptime Monitor</font>`,
+    `### ${title}`,
+    `---`,
+    `- **⚡ 大名：** ${monitor.name}`,
+    `- **🏠 门牌：** [${monitor.url}](${monitor.url})`,
+    `- **🚥 医嘱：** ${statusLabel}`,
+    `- **📝 八卦：** ${detail}`,
+    `---`,
+    `> ${isDown ? '☕ 稳住别慌，带上薪水去拯救世界~' : '🚀 虚惊一场，接着奏乐接着舞~'}`,
+    ``,
+    `<font color="#999999">📅 ${time} &nbsp;·&nbsp; Uptime Monitor</font>`,
   ].join('\n');
   const resp = await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgtype: 'markdown', markdown: { title, text: markdownText } }) });
   const result = await resp.json<DingTalkResult>();
@@ -935,9 +1086,19 @@ async function sendWeCom(cfg: Record<string, string>, monitor: Pick<Monitor, 'na
   if (!key) { console.warn('WeCom config missing.'); return false; }
   const isDown = type === 'DOWN';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
-  const statusLine = isDown ? '> 当前状态：<font color="warning">⚠ 故障</font>' : '> 当前状态：<font color="info">✅ 恢复正常</font>';
-  const content = [`**${title}**`, ``, `> 监控名称：**${monitor.name}**`, `> 监控地址：[${monitor.url}](${monitor.url})`, statusLine, `> 详细信息：${detail}`, ``, `<font color="comment">🕐 ${time} · Uptime Monitor</font>`].join('\n');
+  const title = isDown ? '🚨 突发！服务又双叒叕挂了 (╯°□°)╯︵ ┻━┻' : '🎉 仰卧起坐成功！服务满血复活 ヾ(≧▽≦*)o';
+  const statusLabel = isDown ? '<font color="warning">💥 彻底躺平 (DOWN)</font>' : '<font color="info">✨ 支楞起来了 (UP)</font>';
+  const content = [
+    `### ${title}`,
+    ``,
+    `> **⚡ 大名：** <font color="comment">${monitor.name}</font>`,
+    `> **🏠 门牌：** [${monitor.url}](${monitor.url})`,
+    `> **🚥 医嘱：** ${statusLabel}`,
+    `> **📝 八卦：** <font color="comment">${detail}</font>`,
+    ``,
+    `> <font color="comment">${isDown ? '☕ 稳住别慌，带上薪水去拯救世界~' : '🚀 虚惊一场，接着奏乐接着舞~'}</font>`,
+    `<font color="comment">📅 ${time} · Uptime Monitor</font>`
+  ].join('\n');
   const resp = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgtype: 'markdown', markdown: { content } }) });
   const result = await resp.json<{ errcode: number }>();
   if (result.errcode !== 0) { console.error('WeCom API Error:', result); return false; }
@@ -950,16 +1111,23 @@ async function sendFeishu(cfg: Record<string, string>, monitor: Pick<Monitor, 'n
   if (!webhook_url) { console.warn('Feishu config missing.'); return false; }
   const isDown = type === 'DOWN';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const title = isDown ? '🔴 服务故障报警' : '🟢 服务恢复通知';
+  const title = isDown ? '🚨 突发！服务又双叒叕挂了 (╯°□°)╯︵ ┻━┻' : '🎉 仰卧起坐成功！服务满血复活 ヾ(≧▽≦*)o';
+  const statusFeishu = isDown ? '<font color="red">💥 彻底躺平 (DOWN)</font>' : '<font color="green">✨ 支楞起来了 (UP)</font>';
   const card = {
     config: { wide_screen_mode: true },
     header: { title: { tag: 'plain_text', content: title }, template: isDown ? 'red' : 'green' },
     elements: [
-      { tag: 'div', fields: [{ is_short: true, text: { tag: 'lark_md', content: `**监控名称**\n${monitor.name}` } }, { is_short: true, text: { tag: 'lark_md', content: `**当前状态**\n${isDown ? '⚠ 故障' : '✅ 恢复正常'}` } }] },
-      { tag: 'div', text: { tag: 'lark_md', content: `**监控地址**\n[${monitor.url}](${monitor.url})` } },
-      { tag: 'div', text: { tag: 'lark_md', content: `**详细信息**\n${detail}` } },
+      {
+        tag: 'div',
+        fields: [
+          { is_short: true, text: { tag: 'lark_md', content: `**⚡ 大名**\n${monitor.name}` } },
+          { is_short: true, text: { tag: 'lark_md', content: `**🚥 医嘱**\n${statusFeishu}` } }
+        ]
+      },
+      { tag: 'div', text: { tag: 'lark_md', content: `**🏠 门牌**\n[${monitor.url}](${monitor.url})` } },
+      { tag: 'div', text: { tag: 'lark_md', content: `**📝 八卦**\n${detail}` } },
       { tag: 'hr' },
-      { tag: 'note', elements: [{ tag: 'plain_text', content: `🕐 ${time} · Uptime Monitor` }] },
+      { tag: 'note', elements: [{ tag: 'plain_text', content: `${isDown ? '☕ 稳住别慌，带上薪水去拯救世界~' : '🚀 虚惊一场，接着奏乐接着舞~'}  |  📅 ${time}` }] },
     ],
   };
   const body: Record<string, unknown> = { msg_type: 'interactive', card };
@@ -984,12 +1152,15 @@ async function sendTelegram(cfg: Record<string, string>, monitor: Pick<Monitor, 
   const isDown = type === 'DOWN';
   const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
   const text = [
-    isDown ? '🔴 <b>服务故障报警</b>' : '🟢 <b>服务恢复通知</b>', ``,
-    `📌 <b>监控名称</b>  ${monitor.name}`,
-    `🌐 <b>监控地址</b>  <a href="${monitor.url}">${monitor.url}</a>`,
-    `🚦 <b>当前状态</b>  ${isDown ? '⚠️ <b>故障</b>' : '✅ <b>恢复正常</b>'}`,
-    `📋 <b>详细信息</b>  ${detail}`, ``,
-    `<i>🕐 ${time} · Uptime Monitor</i>`,
+    isDown ? '🚨 <b>突发！服务又双叒叕挂了 (╯°□°)╯︵ ┻━┻</b>' : '🎉 <b>仰卧起坐成功！服务满血复活 ヾ(≧▽≦*)o</b>',
+    ``,
+    `⚡ <b>大名：</b> <code>${monitor.name}</code>`,
+    `🏠 <b>门牌：</b> <a href="${monitor.url}">${monitor.url}</a>`,
+    `🚥 <b>医嘱：</b> ${isDown ? '💥 彻底躺平 (DOWN)' : '✨ 支楞起来了 (UP)'}`,
+    `📝 <b>八卦：</b> <i>${detail}</i>`,
+    ``,
+    `☕ <i>${isDown ? '稳住别慌，带上薪水去拯救世界~' : '虚惊一场，接着奏乐接着舞~'}</i>`,
+    `📅 <i>${time} · Uptime Monitor</i>`,
   ].join('\n');
   const resp = await fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }) });
   const result = await resp.json<{ ok: boolean }>();
@@ -1007,6 +1178,44 @@ async function sendWebhook(cfg: Record<string, string>, monitor: Pick<Monitor, '
   if (headersStr) { try { parsedHeaders = { ...parsedHeaders, ...JSON.parse(headersStr) }; } catch { /* ignore */ } }
   const resp = await fetch(url, { method: (method || 'POST').toUpperCase(), headers: parsedHeaders, body: JSON.stringify(payload) });
   return resp.ok;
+}
+
+// ── Email（Resend API）──────────────────────────────────────
+async function sendEmail(cfg: Record<string, string>, monitor: Pick<Monitor, 'name' | 'url'>, type: 'DOWN' | 'UP', detail: string): Promise<boolean> {
+  const { api_key, from_email, to_email } = cfg;
+  if (!api_key || !to_email) { console.warn('Email config missing.'); return false; }
+  const isDown = type === 'DOWN';
+  const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const title = isDown ? '🚨 突发！服务又双叒叕挂了 (╯°□°)╯︵ ┻━┻' : '🎉 仰卧起坐成功！服务满血复活 ヾ(≧▽≦*)o';
+  const statusColor = isDown ? '#f43f5e' : '#10b981';
+  const statusText = isDown ? '💥 彻底躺平 (DOWN)' : '✨ 支楞起来了 (UP)';
+  const quote = isDown ? '☕ 稳住别慌，带上薪水去拯救世界~' : '🚀 虚惊一场，接着奏乐接着舞~';
+  const html = `
+<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;border-radius:16px;overflow:hidden;border:1px solid #1e293b;box-shadow:0 10px 25px -5px rgba(0,0,0,0.5)">
+  <div style="padding:28px;background:linear-gradient(135deg,${isDown ? '#4c0519' : '#064e3b'},#0f172a);border-bottom:1px solid #1e293b">
+    <h2 style="margin:0;color:#f8fafc;font-size:18px;line-height:1.4">${title}</h2>
+  </div>
+  <div style="padding:28px;color:#cbd5e1;line-height:1.8;font-size:15px">
+    <p style="margin:0 0 12px"><strong>⚡ 大名：</strong> <span style="color:#f1f5f9">${monitor.name}</span></p>
+    <p style="margin:0 0 12px"><strong>🏠 门牌：</strong> <a href="${monitor.url}" style="color:#38bdf8;text-decoration:none">${monitor.url}</a></p>
+    <p style="margin:0 0 12px"><strong>🚥 医嘱：</strong> <span style="color:${statusColor};font-weight:700">${statusText}</span></p>
+    <div style="margin:16px 0;padding:16px;background:#1e293b;border-radius:12px;border-left:4px solid ${statusColor}">
+      <p style="margin:0;font-size:14px;color:#94a3b8"><strong>📝 八卦：</strong> ${detail}</p>
+    </div>
+    <p style="margin:24px 0 0;text-align:center;font-style:italic;color:#64748b">${quote}</p>
+  </div>
+  <div style="padding:16px 28px;background:#0b1120;text-align:center;font-size:12px;color:#475569">
+    📅 ${time} · Uptime Monitor
+  </div>
+</div>`;
+  const fromAddr = from_email || 'Uptime Monitor <noreply@resend.dev>';
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${api_key}` },
+    body: JSON.stringify({ from: fromAddr, to: to_email.split(',').map(s => s.trim()), subject, html }),
+  });
+  if (!resp.ok) { console.error('Resend API Error:', await resp.text()); return false; }
+  return true;
 }
 
 // ============================================================

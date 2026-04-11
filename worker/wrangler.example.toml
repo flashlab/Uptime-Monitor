@@ -11,5 +11,9 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "uptime-db"
-database_id = "f3b490ec-6eaf-4ad5-a09f-d1a47395dd9d"
+database_id = "your-d1-database-id-here"
 
+# 管理员认证（二选一，都填时 API Key 优先）
+# [vars]
+# ADMIN_API_KEY = "your-admin-key"
+# ADMIN_PASSWORD = "your-admin-password"

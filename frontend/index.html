@@ -7,8 +7,7 @@
     <title>System Status — Uptime Monitor</title>
     <meta name="description" content="实时监控服务运行状态与性能指标">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%2222c55e%22><path d=%22M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5%22/></svg>">
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6153369929341681" crossorigin="anonymous"></script>
+    <!-- __ADSENSE_SCRIPT__ -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -29,29 +28,31 @@
         * { font-family: 'Plus Jakarta Sans', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* === 亮色模式 - 温暖纯净白背景 === */
-        body { background: #ffffff; transition: background 0.4s ease; }
-        /* === 暗色模式 OLED 深空背景 === */
+        /* === 亮色模式 === */
+        body { background: #f8fafc; transition: background 0.5s ease, color 0.5s ease; }
+        /* === 暗色模式 OLED === */
         .dark body, html.dark body { background: #030712; }
 
-        /* 科技网格背景 - 亮色隐藏 */
-        .grid-bg {
-            background-image: none;
-            background-size: 60px 60px;
+        /* 全局主题过渡 */
+        *, *::before, *::after {
+            transition-property: background-color, border-color, color, box-shadow, opacity;
+            transition-duration: 0.35s;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* 科技网格背景 */
+        .grid-bg { background-image: none; background-size: 60px 60px; }
         .dark .grid-bg {
             background-image:
                 linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
         }
 
-        /* 卡片样式 - 亮色：纯白 + 精致阴影 */
+        /* 卡片样式 */
         .glass {
-            background: #ffffff;
-            backdrop-filter: none;
+            background: #ffffff; backdrop-filter: none;
             border: 1px solid #e2e8f0;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            transition: all 0.3s ease;
         }
         .dark .glass {
             background: rgba(15,23,42,0.55);
@@ -60,11 +61,11 @@
             box-shadow: none;
         }
         .glass-card {
-            background: #ffffff;
-            backdrop-filter: none;
-            border: 1px solid #e2e8f0;
+            position: relative; overflow: hidden;
+            background: #ffffff; backdrop-filter: none;
+            border: 1px solid #e5e7eb;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), box-shadow 0.35s, border-color 0.35s;
         }
         .dark .glass-card {
             background: rgba(15,23,42,0.45);
@@ -72,75 +73,71 @@
             border: 1px solid rgba(255,255,255,0.04);
             box-shadow: none;
         }
+        /* 卡片顶部渐变装饰线 */
+        .glass-card::after {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, #22c55e, #06b6d4, #8b5cf6);
+            opacity: 0; transition: opacity 0.4s;
+        }
+        .glass-card:hover::after { opacity: 1; }
         .glass-card:hover {
-            background: #ffffff;
-            border-color: #cbd5e1;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            border-color: #d1d5db;
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
         }
         .dark .glass-card:hover {
             background: rgba(15,23,42,0.65);
             border-color: rgba(255,255,255,0.1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
         }
 
-        /* 光晕效果 - 亮色用精致阴影代替光晕 */
+        /* 光晕效果 */
         .glow-green { box-shadow: 0 4px 24px rgba(34,197,94,0.08), 0 1px 4px rgba(0,0,0,0.04); }
         .glow-red   { box-shadow: 0 4px 24px rgba(239,68,68,0.08), 0 1px 4px rgba(0,0,0,0.04); }
         .dark .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.25), 0 0 60px rgba(34,197,94,0.08); }
         .dark .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.25), 0 0 60px rgba(239,68,68,0.08); }
 
         /* 状态脉冲 */
-        @keyframes pulse-ring {
-            0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(2.5); opacity: 0; }
-        }
-        @keyframes pulse-dot {
-            0%,100% { opacity: 1; transform: scale(1); }
-            50%     { opacity: 0.5; transform: scale(1.2); }
-        }
+        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.5); opacity: 0; } }
+        @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(1.2); } }
         .pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
-        .pulse-ring {
-            animation: pulse-ring 2s ease-out infinite;
-            position: absolute; inset: -3px; border-radius: 50%;
-        }
+        .pulse-ring { animation: pulse-ring 2s ease-out infinite; position: absolute; inset: -3px; border-radius: 50%; }
 
         /* 英雄区呼吸光 */
-        @keyframes hero-glow {
-            0%,100% { opacity: 0.5; }
-            50%     { opacity: 1; }
-        }
+        @keyframes hero-glow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
         .hero-glow { animation: hero-glow 4s ease-in-out infinite; }
 
         /* 进入动画 */
-        @keyframes fade-up {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
+        @keyframes fade-up { from { opacity:0; transform:translateY(20px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
         .fade-up    { animation: fade-up 0.6s ease-out forwards; }
         .fade-up-d1 { animation: fade-up 0.6s 0.1s ease-out both; }
         .fade-up-d2 { animation: fade-up 0.6s 0.2s ease-out both; }
         .fade-up-d3 { animation: fade-up 0.6s 0.3s ease-out both; }
 
+        /* 数据刷新闪烁 */
+        @keyframes data-pulse {
+            0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; }
+        }
+        .data-refreshing .glass-card { animation: data-pulse 0.6s ease-in-out; }
+
         /* 状态条左边框 */
         .status-line { position: relative; }
         .status-line::before {
-            content: '';
-            position: absolute;
+            content: ''; position: absolute;
             left: 0; top: 12px; bottom: 12px; width: 3px;
             border-radius: 3px;
-            transition: all 0.3s ease;
         }
-        .status-line-green::before { background: #22c55e; box-shadow: none; }
-        .status-line-red::before   { background: #ef4444; box-shadow: none; }
-        .status-line-yellow::before { background: #eab308; box-shadow: none; }
+        .status-line-green::before { background: linear-gradient(180deg, #22c55e, #06b6d4); box-shadow: none; }
+        .status-line-red::before   { background: linear-gradient(180deg, #ef4444, #f97316); box-shadow: none; }
+        .status-line-yellow::before { background: linear-gradient(180deg, #eab308, #f59e0b); box-shadow: none; }
         .status-line-gray::before  { background: #cbd5e1; }
-        .dark .status-line-green::before { box-shadow: 0 0 8px rgba(34,197,94,0.4); }
-        .dark .status-line-red::before   { box-shadow: 0 0 8px rgba(239,68,68,0.4); }
-        .dark .status-line-yellow::before { box-shadow: 0 0 8px rgba(234,179,8,0.4); }
+        .dark .status-line-green::before { box-shadow: 0 0 10px rgba(34,197,94,0.5); }
+        .dark .status-line-red::before   { box-shadow: 0 0 10px rgba(239,68,68,0.5); }
+        .dark .status-line-yellow::before { box-shadow: 0 0 10px rgba(234,179,8,0.5); }
         .dark .status-line-gray::before  { background: #475569; }
 
-        /* 滚动条 - 亮色 */
+        /* 滚动条 */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
@@ -148,7 +145,7 @@
         .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
         .dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
-        /* 浮动粒子背景 */
+        /* 浮动背景 */
         @keyframes float {
             0%,100% { transform: translate(0,0) rotate(0deg); }
             25% { transform: translate(10px,-15px) rotate(1deg); }
@@ -156,15 +153,75 @@
             75% { transform: translate(-15px,-10px) rotate(0.5deg); }
         }
 
-        /* 响应式 */
+        /* sparkline hover */
+        .sparkline-wrap { transition: transform 0.3s; }
+        .glass-card:hover .sparkline-wrap { transform: scaleX(1.05) scaleY(1.15); }
+
+        /* 延迟徽章 hover */
+        .latency-badge { transition: transform 0.2s, box-shadow 0.2s; }
+        .latency-badge:hover { transform: scale(1.08); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        /* 主题切换按钮 */
+        .theme-btn { transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+        .theme-btn:active { transform: scale(0.85) rotate(15deg); }
+
+        /* 刷新按钮旋转 */
+        @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .refresh-spin { animation: spin-once 0.6s ease-in-out; }
+
+        /* ========= 移动端适配 ========= */
         @media (max-width: 640px) {
-            .hero-banner { padding: 1.5rem !important; }
-            .monitor-meta { flex-wrap: wrap; gap: 0.5rem !important; }
+            .hero-banner { padding: 1.25rem !important; }
+            .hero-banner h1 { font-size: 1.25rem !important; }
+            .hero-banner .hero-icon { width: 40px !important; height: 40px !important; }
+            .hero-banner .hero-icon svg { width: 20px !important; height: 20px !important; }
+            .hero-stats { grid-template-columns: repeat(3, 1fr) !important; gap: 0.75rem !important; }
+            .hero-stats p:last-child { font-size: 1.25rem !important; }
+
+            .glass-card { padding: 0.875rem 1rem 0.75rem !important; border-radius: 0.875rem !important; }
+            .monitor-meta { flex-wrap: wrap; gap: 0.375rem !important; }
+            .monitor-row1 { gap: 0.25rem !important; }
+            .monitor-row1 h3 { font-size: 13px !important; }
+            .monitor-row2 { padding-left: 22px !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.375rem !important; }
+            .monitor-row2 a { max-width: 100% !important; }
+            .monitor-row2 .sparkline-wrap { display: none !important; }
+            .monitor-row3 { padding-left: 22px !important; }
+            .uptime-bar-cell { height: 14px !important; }
+        }
+
+        @media (max-width: 400px) {
+            .hero-stats { grid-template-columns: 1fr 1fr !important; }
+            .hero-stats > div:last-child { grid-column: span 2; text-align: center; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            * { animation: none !important; transition: none !important; }
+            *, *::before, *::after { animation: none !important; transition: none !important; }
         }
+
+        /* 90天可用性条 */
+        .uptime-bar-cell { position: relative; transition: transform 0.15s, filter 0.15s; cursor: default; }
+        .uptime-bar-cell:hover { transform: scaleY(1.8) scaleX(1.4); z-index: 10; filter: brightness(1.15); }
+        .uptime-tooltip {
+            position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+            padding: 5px 10px; border-radius: 8px; font-size: 10px; font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20;
+            background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+        }
+        .uptime-tooltip::after {
+            content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            border: 4px solid transparent; border-top-color: #0f172a;
+        }
+
+        /* 避免两端 tooltip 被卡片 overflow 截断 */
+        .uptime-bar-cell:nth-child(-n+20) .uptime-tooltip { left: 0; transform: translateX(0); }
+        .uptime-bar-cell:nth-child(-n+20) .uptime-tooltip::after { left: 12px; transform: translateX(0); }
+        .uptime-bar-cell:nth-last-child(-n+20) .uptime-tooltip { left: auto; right: 0; transform: translateX(0); }
+        .uptime-bar-cell:nth-last-child(-n+20) .uptime-tooltip::after { left: auto; right: 12px; transform: translateX(0); }
+
+        .uptime-bar-cell:hover .uptime-tooltip { opacity: 1; }
+        .sparkline-area { opacity: 0.1; }
+        .dark .sparkline-area { opacity: 0.2; }
     </style>
 </head>
 
@@ -268,8 +325,8 @@
                             <p class="text-2xl font-bold text-emerald-500 dark:text-emerald-400 font-mono">{{ monitors.filter(m=>m.paused!==1).length > 0 ? Math.round(monitors.filter(m=>m.paused!==1&&m.status==='UP').length / monitors.filter(m=>m.paused!==1).length * 100) : 0 }}%</p>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1">INCIDENTS</p>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white font-mono">{{ monitors.filter(m=>m.status==='DOWN').length }}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1">AVG LATENCY</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white font-mono">{{ avgLatency != null ? avgLatency + 'ms' : '-' }}</p>
                         </div>
                     </div>
                 </div>
@@ -385,16 +442,20 @@
                         <div class="w-1 h-5 rounded-full bg-emerald-500"></div>
                         <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">服务列表</h2>
                     </div>
-                    <div class="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-600">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
-                        {{ monitors.filter(m=>m.paused!==1).length }} 个活跃监控
+                    <div class="flex items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-600">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
+                            {{ monitors.filter(m=>m.paused!==1).length }} 个活跃监控
+                        </span>
+                        <span v-if="lastUpdated" class="text-slate-400 dark:text-slate-700">·</span>
+                        <span v-if="lastUpdated" class="text-slate-400 dark:text-slate-700">{{ lastUpdated }}</span>
                     </div>
                 </div>
 
                 <!-- 监控卡片 -->
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <div v-for="(m, idx) in monitors" :key="m.id"
-                        class="glass-card rounded-2xl px-6 py-5 status-line cursor-default group"
+                        class="glass-card rounded-2xl px-6 pt-5 pb-4 status-line cursor-default group"
                         :class="[
                             m.paused ? 'opacity-40 status-line-gray' : '',
                             m.status === 'UP' && !m.paused ? 'status-line-green' : '',
@@ -403,77 +464,80 @@
                         ]"
                         :style="{ animationDelay: (idx * 0.06) + 's' }">
 
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <!-- 左侧：状态 + 信息 -->
-                            <div class="flex items-center gap-4 min-w-0 pl-4">
-                                <!-- 状态指示灯 -->
+                        <!-- 第一行：名称 + 核心指标 -->
+                        <div class="flex items-center justify-between gap-3 mb-2 monitor-row1">
+                            <div class="flex items-center gap-3.5 min-w-0 pl-3">
                                 <div class="relative shrink-0">
-                                    <div class="w-3 h-3 rounded-full transition-all duration-300"
+                                    <div class="w-2.5 h-2.5 rounded-full"
                                         :class="{
                                             'bg-emerald-400': m.status === 'UP' && !m.paused,
-                                            'bg-red-400':     m.status === 'DOWN',
-                                            'bg-yellow-400':  m.status === 'RETRYING',
-                                            'bg-slate-600':   m.status === 'PAUSED' || m.paused,
-                                        }">
-                                    </div>
-                                    <div v-if="m.status === 'UP' && !m.paused"
-                                        class="absolute inset-0 rounded-full bg-emerald-400/40 pulse-dot"></div>
+                                            'bg-red-400': m.status === 'DOWN',
+                                            'bg-yellow-400': m.status === 'RETRYING',
+                                            'bg-slate-400 dark:bg-slate-600': m.paused,
+                                        }"></div>
+                                    <div v-if="m.status === 'UP' && !m.paused" class="absolute inset-0 rounded-full bg-emerald-400/40 pulse-dot"></div>
                                 </div>
-
-                                <!-- 名称 + URL -->
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2.5 mb-1">
-                                        <h3 class="font-bold text-slate-900 dark:text-white text-[15px] truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors duration-300">{{ m.name }}</h3>
-                                        <span v-if="m.status === 'DOWN'"
-                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-red-500/15 text-red-400 border border-red-500/20 tracking-wider">DOWN</span>
-                                        <span v-if="m.status === 'RETRYING'"
-                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-yellow-400/15 text-yellow-400 border border-yellow-400/20 tracking-wider">RETRYING</span>
-                                        <span v-if="m.paused"
-                                            class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-slate-800 text-slate-500 border border-slate-700 tracking-wider">PAUSED</span>
-                                    </div>
-                                    <a :href="m.url" target="_blank" rel="noopener"
-                                        class="text-xs font-mono text-slate-400 dark:text-slate-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-300 truncate flex items-center gap-1.5 max-w-sm cursor-pointer">
-                                        {{ m.url }}
-                                        <svg class="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity duration-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
-                                        </svg>
-                                    </a>
-                                </div>
+                                <h3 class="font-bold text-slate-900 dark:text-white text-[15px] truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">{{ m.name }}</h3>
                             </div>
-
-                            <!-- 右侧：标签 + 时间 + 状态 -->
-                            <div class="flex items-center gap-3 pl-8 md:pl-0 monitor-meta">
-                                <!-- SSL -->
-                                <div v-if="m.cert_expiry"
-                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium border transition-all duration-300"
-                                    :class="getExpiryClass(m.cert_expiry)">
-                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                                    </svg>
-                                    SSL {{ formatExpiry(m.cert_expiry) }}
+                            <div class="flex items-center gap-2.5 shrink-0 monitor-meta">
+                                <!-- 响应延迟 -->
+                                <div v-if="m.latency != null && !m.paused" class="latency-badge flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-medium border cursor-default"
+                                    :class="latencyClass(m.latency)">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                                    {{ m.latency }}ms
                                 </div>
-                                <div v-else-if="m.status === 'UP'"
-                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium border border-emerald-500/20 bg-emerald-500/8 text-emerald-400">
-                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-                                    </svg>
-                                    SSL OK
+                                <!-- 24h 可用率 -->
+                                <div v-if="m.uptime_24h != null && !m.paused" class="px-2 py-1 rounded-lg text-[11px] font-mono font-bold border"
+                                    :class="m.uptime_24h >= 99.9 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/8 border-emerald-200 dark:border-emerald-500/20' : m.uptime_24h >= 95 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-500/8 border-yellow-200 dark:border-yellow-500/20' : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/8 border-red-200 dark:border-red-500/20'">
+                                    {{ m.uptime_24h }}%
                                 </div>
-
-                                <!-- 最后检测 -->
-                                <span class="text-[11px] font-mono text-slate-400 dark:text-slate-600 whitespace-nowrap">{{ formatDate(m.last_check) }}</span>
-
                                 <!-- 状态徽章 -->
-                                <span class="px-3 py-1.5 rounded-lg text-[10px] font-bold font-mono tracking-[0.15em] border transition-all duration-300"
-                                    :class="m.status === 'UP' && !m.paused
-                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                        : m.status === 'DOWN'
-                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                            : m.status === 'RETRYING'
-                                                ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
-                                                : 'bg-slate-800 text-slate-500 border-slate-700'">
+                                <span class="hidden sm:inline px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono tracking-[0.12em] border transition-all duration-300"
+                                    :class="m.status === 'UP' && !m.paused ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' : m.status === 'DOWN' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20' : m.status === 'RETRYING' ? 'bg-yellow-50 dark:bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-400/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'">
                                     {{ m.paused ? 'PAUSED' : m.status === 'UP' ? 'ONLINE' : m.status === 'DOWN' ? 'OFFLINE' : 'RETRYING' }}
                                 </span>
+                            </div>
+                        </div>
+
+                        <!-- 第二行：URL + SSL + 迷你折线图 -->
+                        <div class="flex items-center justify-between gap-4 mb-3 pl-[26px] monitor-row2">
+                            <div class="flex items-center gap-3 min-w-0 flex-wrap">
+                                <a :href="m.url" target="_blank" rel="noopener" class="text-xs font-mono text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors truncate max-w-[280px] cursor-pointer flex items-center gap-1.5 group/link">
+                                    {{ m.url }}
+                                    <svg class="w-2.5 h-2.5 opacity-0 group-hover/link:opacity-100 transition-all duration-300 shrink-0 -translate-y-0.5 group-hover/link:translate-y-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                                </a>
+                                <div v-if="m.cert_expiry" class="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono" :class="getExpiryClass(m.cert_expiry)">
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                                    SSL {{ formatExpiry(m.cert_expiry) }}
+                                </div>
+                                <span class="text-[10px] font-mono text-slate-400 dark:text-slate-600">{{ formatDate(m.last_check) }}</span>
+                            </div>
+                            <!-- 迷你延迟折线图 -->
+                            <div v-if="m.recent_latencies && m.recent_latencies.length > 2 && !m.paused" class="sparkline-wrap hidden sm:block shrink-0">
+                                <svg class="w-[120px] h-[28px]" :class="m.status === 'DOWN' ? 'text-red-500' : 'text-emerald-500'" viewBox="0 0 120 28" preserveAspectRatio="none">
+                                    <path :d="sparklineArea(m.recent_latencies)" class="sparkline-area" fill="currentColor"/>
+                                    <path :d="sparklinePath(m.recent_latencies)" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+                                    <circle :cx="sparklineLastPt(m.recent_latencies).x" :cy="sparklineLastPt(m.recent_latencies).y" r="2.5" fill="currentColor" opacity="0.9"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- 第三行：90天可用性色块条 -->
+                        <div v-if="m.daily_stats && m.daily_stats.length > 0 && !m.paused" class="pl-[26px] monitor-row3">
+                            <div class="flex gap-[1.5px] items-end">
+                                <div v-for="(day, i) in getDisplayDays(m)" :key="i"
+                                    class="uptime-bar-cell flex-1 rounded-[2px]"
+                                    style="height:18px"
+                                    :class="dayColorClass(day)">
+                                    <div class="uptime-tooltip">{{ day.date }} · <span v-if="day.total > 0">{{ ((day.up / day.total) * 100).toFixed(1) }}%</span><span v-else>No data</span></div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center mt-1.5">
+                                <span class="text-[9px] font-mono text-slate-400/60 dark:text-slate-600/60">90 days ago</span>
+                                <span v-if="m.uptime_30d != null" class="text-[10px] font-mono font-semibold"
+                                    :class="m.uptime_30d >= 99.9 ? 'text-emerald-500' : m.uptime_30d >= 95 ? 'text-yellow-500' : 'text-red-500'"
+                                >30d: {{ m.uptime_30d }}%</span>
+                                <span class="text-[9px] font-mono text-slate-400/60 dark:text-slate-600/60">Yesterday</span>
                             </div>
                         </div>
                     </div>
@@ -486,14 +550,19 @@
             <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-700">
                 <div class="flex items-center gap-2">
                     <div class="w-1 h-1 rounded-full bg-emerald-500/40"></div>
-                    <p>&copy; {{ new Date().getFullYear() }} <a href="https://nianshu2022.cn" target="_blank" class="hover:text-slate-700 dark:hover:text-slate-400 transition-colors duration-300">念舒</a>. All Rights Reserved.</p>
+                    <p>&copy; {{ new Date().getFullYear() }} <a href="%VITE_FOOTER_URL%" target="_blank" class="hover:text-slate-700 dark:hover:text-slate-400 transition-colors">%VITE_FOOTER_AUTHOR%</a>. All Rights Reserved.</p>
                 </div>
                 <div class="flex items-center gap-5 font-mono">
+                    <!-- 手动刷新 -->
+                    <button @click="manualRefresh" :disabled="loading" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer disabled:opacity-40" title="刷新数据">
+                        <svg :class="{'refresh-spin': refreshing}" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183"/></svg>
+                        Refresh
+                    </button>
                     <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/></svg>
                         Cloudflare Edge
                     </span>
-                    <a href="/admin" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600 hover:text-slate-700 dark:hover:text-slate-400 transition-colors duration-300 cursor-pointer">
+                    <a href="/admin" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-600 hover:text-slate-700 dark:hover:text-slate-400 transition-colors cursor-pointer">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
                         Admin
                     </a>
@@ -505,6 +574,19 @@
     <script>
         const API_BASE = '/api';
         const { createApp, ref, onMounted, computed } = Vue;
+
+        // ── 网络增强：超时控制 + 自动重试（应对国内访问 Cloudflare 偶发超时） ──
+        const fetchT = (url, opts = {}, ms = 12000) => {
+            const c = new AbortController();
+            const t = setTimeout(() => c.abort(), ms);
+            return fetch(url, { ...opts, signal: c.signal }).finally(() => clearTimeout(t));
+        };
+        const withRetry = async (fn, n = 2, base = 1500) => {
+            for (let i = 0; i <= n; i++) {
+                try { return await fn(); }
+                catch (e) { if (i === n) throw e; await new Promise(r => setTimeout(r, base * (i + 1))); }
+            }
+        };
 
         createApp({
             setup() {
@@ -535,39 +617,53 @@
                     document.documentElement.classList.toggle('dark', isDark.value);
                 };
 
+                // 平均延迟
+                const avgLatency = computed(() => {
+                    const active = activeMonitors.value.filter(m => m.latency != null);
+                    if (active.length === 0) return null;
+                    return Math.round(active.reduce((sum, m) => sum + m.latency, 0) / active.length);
+                });
+
+                // 上次更新时间
+                const lastUpdated = ref('');
+                const refreshing = ref(false);
+
                 const fetchMonitors = async () => {
                     loading.value = true;
                     error.value = null;
                     try {
-                        const res = await fetch(`${API_BASE}/monitors/public`);
+                        const res = await withRetry(() => fetchT(`${API_BASE}/monitors/public/details`));
                         if (res.ok) {
-                            monitors.value = await res.json();
+                            const data = await res.json();
+                            monitors.value = data.monitors || [];
+                            lastUpdated.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
                         } else {
                             let errorMsg = `服务器返回错误 (${res.status})`;
-                            try {
-                                const errData = await res.json();
-                                if (errData && errData.error) {
-                                    errorMsg = `API 错误: ${errData.error}`;
-                                }
-                            } catch (e) {}
+                            try { const d = await res.json(); if (d?.error) errorMsg = `API 错误: ${d.error}`; } catch {}
                             error.value = errorMsg;
                         }
                     } catch (e) {
-                        error.value = '无法连接到监控服务，请检查网络连接。';
+                        error.value = '连接监控服务超时，已自动重试仍无法连接，请稍后刷新页面。';
                     } finally {
                         loading.value = false;
                     }
+                };
+
+                const manualRefresh = async () => {
+                    refreshing.value = true;
+                    await fetchMonitors();
+                    setTimeout(() => { refreshing.value = false; }, 700);
                 };
 
                 const incidents = Vue.ref([]);
                 const siteSettings = Vue.ref({ site_title: 'Uptime Monitor', site_description: '', site_logo_url: '' });
 
                 const fetchIncidents = async () => {
-                    try { const r = await fetch(`${API_BASE}/incidents`); if (r.ok) incidents.value = await r.json(); } catch {}
+                    try { const r = await fetchT(`${API_BASE}/incidents`); if (r.ok) incidents.value = await r.json(); } catch {}
                 };
                 const fetchSettings = async () => {
                     try {
-                        const r = await fetch(`${API_BASE}/settings`);
+                        const r = await fetchT(`${API_BASE}/settings`);
                         if (r.ok) {
                             const d = await r.json();
                             siteSettings.value = d;
@@ -611,6 +707,72 @@
                     return `${days}d`;
                 };
 
+                // ── 延迟颜色分级 ──
+                const latencyClass = (ms) => {
+                    if (ms < 100) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/8 border-emerald-200 dark:border-emerald-500/20';
+                    if (ms < 300) return 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/8 border-sky-200 dark:border-sky-500/20';
+                    if (ms < 800) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-500/8 border-yellow-200 dark:border-yellow-500/20';
+                    return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/8 border-red-200 dark:border-red-500/20';
+                };
+
+                // ── 迷你延迟折线图 ──
+                const sparklinePath = (lats) => {
+                    if (!lats || lats.length < 2) return '';
+                    const W = 120, H = 28, P = 2;
+                    const max = Math.max(...lats), min = Math.min(...lats);
+                    const range = max - min || 1;
+                    return lats.map((v, i) => {
+                        const x = P + (i / (lats.length - 1)) * (W - 2 * P);
+                        const y = H - P - ((v - min) / range) * (H - 2 * P);
+                        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+                    }).join(' ');
+                };
+                const sparklineArea = (lats) => {
+                    if (!lats || lats.length < 2) return '';
+                    const W = 120, H = 28, P = 2;
+                    const max = Math.max(...lats), min = Math.min(...lats);
+                    const range = max - min || 1;
+                    const pts = lats.map((v, i) => {
+                        const x = P + (i / (lats.length - 1)) * (W - 2 * P);
+                        const y = H - P - ((v - min) / range) * (H - 2 * P);
+                        return `${x.toFixed(1)} ${y.toFixed(1)}`;
+                    });
+                    return `M${pts[0]} L${pts.join(' L')} L${(W - P).toFixed(1)} ${H} L${P} ${H} Z`;
+                };
+                const sparklineLastPt = (lats) => {
+                    if (!lats || lats.length < 2) return { x: 0, y: 0 };
+                    const W = 120, H = 28, P = 2;
+                    const max = Math.max(...lats), min = Math.min(...lats);
+                    const range = max - min || 1;
+                    const v = lats[lats.length - 1], i = lats.length - 1;
+                    return {
+                        x: P + (i / (lats.length - 1)) * (W - 2 * P),
+                        y: H - P - ((v - min) / range) * (H - 2 * P)
+                    };
+                };
+
+                // ── 90天可用性条 ──
+                const getDisplayDays = (m) => {
+                    const stats = m.daily_stats || [];
+                    const map = {};
+                    stats.forEach(s => { map[s.date] = s; });
+                    const days = [];
+                    for (let i = 89; i >= 0; i--) {
+                        const d = new Date(Date.now() - i * 86400000);
+                        const ds = d.toISOString().slice(0, 10);
+                        const s = map[ds];
+                        days.push({ date: ds, up: s ? s.up : 0, total: s ? s.total : 0 });
+                    }
+                    return days;
+                };
+                const dayColorClass = (day) => {
+                    if (day.total === 0) return 'bg-slate-200/80 dark:bg-slate-800/60';
+                    const pct = (day.up / day.total) * 100;
+                    if (pct >= 99.9) return 'bg-emerald-400 dark:bg-emerald-500';
+                    if (pct >= 95) return 'bg-yellow-400 dark:bg-yellow-500';
+                    return 'bg-red-400 dark:bg-red-500';
+                };
+
                 onMounted(() => {
                     initTheme();
                     fetchMonitors();
@@ -621,16 +783,18 @@
 
                 return {
                     monitors, loading, isDark, error,
-                    allUp, hasRetrying, hasDown,
+                    allUp, hasRetrying, hasDown, avgLatency,
+                    lastUpdated, refreshing, manualRefresh,
                     toggleTheme, fetchMonitors,
                     formatDate, getDaysRemaining, getExpiryClass, formatExpiry,
+                    latencyClass, sparklinePath, sparklineArea, sparklineLastPt,
+                    getDisplayDays, dayColorClass,
                     incidents, siteSettings,
                 };
             }
         }).mount('#app');
     </script>
-    <!-- Cloudflare Web Analytics -->
-    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "38d73bd4174846ca8b9371fb6dabc46b"}'></script>
+    <!-- __CF_ANALYTICS_SCRIPT__ -->
 </body>
 
 </html>

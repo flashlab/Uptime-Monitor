@@ -11,9 +11,6 @@ jobs:
   deploy-worker:
     name: Deploy Worker (Backend)
     runs-on: ubuntu-latest
-    # 只有 worker 目录有变动时才运行（节省 Actions 用量）
-    # 若想每次都部署，删除下面 4 行
-    # if: contains(github.event.head_commit.modified, 'worker/')
 
     steps:
       - name: Checkout code
@@ -37,3 +34,56 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           command: deploy
+          # wrangler.toml 不在 Git 中，CI 动态生成
+          preCommands: |
+            cat > wrangler.toml << 'EOF'
+            name = "uptime-worker"
+            main = "src/index.ts"
+            compatibility_date = "2024-02-08"
+
+            [triggers]
+            crons = ["* * * * *"]
+
+            [[d1_databases]]
+            binding = "DB"
+            database_name = "uptime-db"
+            database_id = "${{ secrets.D1_DATABASE_ID }}"
+
+            [vars]
+            ADMIN_API_KEY = "${{ secrets.ADMIN_API_KEY }}"
+            EOF
+
+  deploy-pages:
+    name: Deploy Pages (Frontend)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_ADSENSE_CLIENT: ${{ secrets.VITE_ADSENSE_CLIENT }}
+          VITE_CF_ANALYTICS_TOKEN: ${{ secrets.VITE_CF_ANALYTICS_TOKEN }}
+          VITE_FOOTER_AUTHOR: ${{ vars.VITE_FOOTER_AUTHOR }}
+          VITE_FOOTER_URL: ${{ vars.VITE_FOOTER_URL }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name=uptime-monitor

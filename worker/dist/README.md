@@ -1,1 +1,0 @@
-This folder contains the built output assets for the worker "uptime-worker" generated at 2026-03-23T08:28:16.861Z.
