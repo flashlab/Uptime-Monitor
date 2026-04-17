@@ -1,13 +1,22 @@
 /**
+ * 日期字符串规范化（内部工具函数）
+ * 统一处理 SQLite 无时区字符串 → UTC ISO 格式
+ */
+const normalizeDate = (str) => {
+    if (!str) return null;
+    if (typeof str !== 'string') return str;
+    if (!str.includes('Z') && !str.includes('+')) {
+        return str.includes('T') ? str + 'Z' : str.replace(' ', 'T') + 'Z';
+    }
+    return str;
+};
+
+/**
  * 日期格式化（相对时间 + 绝对时间）
  */
 export const formatDate = (str) => {
-    if (!str) return '-';
-    let s = str;
-    if (typeof s === 'string' && !s.includes('Z') && !s.includes('+') && !s.includes('T'))
-        s = s.replace(' ', 'T') + 'Z';
-    else if (typeof s === 'string' && !s.includes('Z') && !s.includes('+'))
-        s += 'Z';
+    const s = normalizeDate(str);
+    if (!s) return '-';
     const date = new Date(s);
     if (isNaN(date.getTime())) return '-';
     const diff = (Date.now() - date) / 1000;
@@ -15,7 +24,7 @@ export const formatDate = (str) => {
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     try {
         return date.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } catch (e) {
+    } catch {
         return '-';
     }
 };
@@ -24,22 +33,18 @@ export const formatDate = (str) => {
  * Admin 专用格式化（完整日期时间）
  */
 export const formatDateFull = (str) => {
-    if (!str) return '-';
-    let dateStr = str;
-    if (typeof str === 'string' && !str.includes('Z') && !str.includes('+') && !str.includes('T'))
-        dateStr = str.replace(' ', 'T') + 'Z';
-    else if (typeof str === 'string' && !str.includes('Z') && !str.includes('+'))
-        dateStr = str + 'Z';
-    const date = new Date(dateStr);
+    const s = normalizeDate(str);
+    if (!s) return '-';
+    const date = new Date(s);
     if (isNaN(date.getTime())) return '-';
     try {
         return date.toLocaleString('zh-CN', {
             timeZone: 'Asia/Shanghai',
             month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit', second: '2-digit',
-            hour12: false
+            hour12: false,
         });
-    } catch (e) {
+    } catch {
         return '-';
     }
 };
@@ -48,12 +53,8 @@ export const formatDateFull = (str) => {
  * 证书/域名剩余天数
  */
 export const getDaysRemaining = (dateStr) => {
-    if (!dateStr) return null;
-    let s = dateStr;
-    if (typeof s === 'string' && !s.includes('Z') && !s.includes('+') && !s.includes('T'))
-        s = s.replace(' ', 'T') + 'Z';
-    else if (typeof s === 'string' && !s.includes('Z') && !s.includes('+'))
-        s += 'Z';
+    const s = normalizeDate(dateStr);
+    if (!s) return null;
     const d = new Date(s);
     if (isNaN(d.getTime())) return null;
     return Math.ceil((d.getTime() - Date.now()) / 86400000);
@@ -77,7 +78,7 @@ export const getExpiryClass = (dateStr) => {
 export const getExpiryClassAdmin = (dateStr) => {
     if (!dateStr) return 'text-green-600 dark:text-green-400';
     const days = getDaysRemaining(dateStr);
-    if (days < 7) return 'text-red-600 dark:text-red-400 font-bold';
+    if (days < 7)  return 'text-red-600 dark:text-red-400 font-bold';
     if (days < 30) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-green-600 dark:text-green-400';
 };

@@ -5,7 +5,13 @@ export function useTheme(storageKey = 'theme') {
 
     const initTheme = () => {
         const saved = localStorage.getItem(storageKey);
-        isDark.value = saved !== 'light';
+        if (saved) {
+            // 优先使用用户上次手动选择的主题
+            isDark.value = saved !== 'light';
+        } else {
+            // 首次访问：跟随操作系统主题偏好
+            isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
         document.documentElement.classList.toggle('dark', isDark.value);
     };
 

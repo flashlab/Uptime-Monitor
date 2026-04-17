@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useTheme } from '../composables/useTheme';
 import { API_BASE, fetchT, withRetry } from '../utils/api';
 import { formatDate } from '../utils/format';
@@ -131,7 +131,10 @@ const manualRefresh = async () => {
 };
 
 const fetchIncidents = async () => {
-    try { const r = await fetchT(`${API_BASE}/incidents`); if (r.ok) incidents.value = await r.json(); } catch {}
+    try {
+        const r = await withRetry(() => fetchT(`${API_BASE}/incidents`));
+        if (r.ok) incidents.value = await r.json();
+    } catch {}
 };
 
 const fetchSettings = async () => {
@@ -147,10 +150,12 @@ const fetchSettings = async () => {
     } catch {}
 };
 
+let _timer;
 onMounted(() => {
     fetchMonitors();
     fetchIncidents();
     fetchSettings();
-    setInterval(fetchMonitors, 30000);
+    _timer = setInterval(fetchMonitors, 30000);
 });
+onUnmounted(() => clearInterval(_timer));
 </script>

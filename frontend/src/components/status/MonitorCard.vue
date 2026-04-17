@@ -53,12 +53,12 @@
         </div>
         <span class="text-[9px] sm:text-[11px] font-mono text-slate-400 dark:text-slate-600">{{ formatDate(monitor.last_check) }}</span>
       </div>
-      <!-- 迷你延迟折线 -->
-      <div v-if="monitor.recent_latencies && monitor.recent_latencies.length > 2 && !monitor.paused" class="sparkline-wrap block shrink-0">
+      <!-- 迷你延迟折线（computed 缓存，单次遍历） -->
+      <div v-if="sparkline && !monitor.paused" class="sparkline-wrap block shrink-0">
         <svg class="w-[80px] sm:w-[120px] h-[20px] sm:h-[28px]" :class="monitor.status === 'DOWN' ? 'text-red-500' : 'text-emerald-500'" viewBox="0 0 120 28" preserveAspectRatio="none">
-          <path :d="sparklineArea(monitor.recent_latencies)" class="sparkline-area" fill="currentColor"/>
-          <path :d="sparklinePath(monitor.recent_latencies)" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
-          <circle :cx="sparklineLastPt(monitor.recent_latencies).x" :cy="sparklineLastPt(monitor.recent_latencies).y" r="2.5" fill="currentColor" opacity="0.9"/>
+          <path :d="sparkline.area" class="sparkline-area" fill="currentColor"/>
+          <path :d="sparkline.line" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+          <circle :cx="sparkline.dot.x" :cy="sparkline.dot.y" r="2.5" fill="currentColor" opacity="0.9"/>
         </svg>
       </div>
     </div>
@@ -69,48 +69,37 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { formatDate, getExpiryClass, formatExpiry, latencyClass } from '../../utils/format';
 import UptimeBar from './UptimeBar.vue';
 
-defineProps({
-    monitor: Object,
-    index: Number,
+const props = defineProps({
+    monitor: { type: Object, required: true },
+    index:   { type: Number, required: true },
 });
 
-const sparklinePath = (lats) => {
-    if (!lats || lats.length < 2) return '';
-    const W = 120, H = 28, P = 2;
-    const max = Math.max(...lats), min = Math.min(...lats);
-    const range = max - min || 1;
-    return lats.map((v, i) => {
-        const x = P + (i / (lats.length - 1)) * (W - 2 * P);
-        const y = H - P - ((v - min) / range) * (H - 2 * P);
-        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
-    }).join(' ');
-};
+/**
+ * 一次遍历计算所有 sparkline 路径数据（line + area + dot），
+ * 避免原先三个函数各自独立遍历 + 重复计算 min/max/range 的开销。
+ * 使用 computed 保证响应式缓存，数据不变时不重新计算。
+ */
+const sparkline = computed(() => {
+    const lats = props.monitor.recent_latencies;
+    if (!lats || lats.length < 3) return null;
 
-const sparklineArea = (lats) => {
-    if (!lats || lats.length < 2) return '';
     const W = 120, H = 28, P = 2;
     const max = Math.max(...lats), min = Math.min(...lats);
     const range = max - min || 1;
-    const pts = lats.map((v, i) => {
-        const x = P + (i / (lats.length - 1)) * (W - 2 * P);
-        const y = H - P - ((v - min) / range) * (H - 2 * P);
-        return `${x.toFixed(1)} ${y.toFixed(1)}`;
-    });
-    return `M${pts[0]} L${pts.join(' L')} L${(W - P).toFixed(1)} ${H} L${P} ${H} Z`;
-};
 
-const sparklineLastPt = (lats) => {
-    if (!lats || lats.length < 2) return { x: 0, y: 0 };
-    const W = 120, H = 28, P = 2;
-    const max = Math.max(...lats), min = Math.min(...lats);
-    const range = max - min || 1;
-    const v = lats[lats.length - 1], i = lats.length - 1;
-    return {
+    const pts = lats.map((v, i) => ({
         x: P + (i / (lats.length - 1)) * (W - 2 * P),
-        y: H - P - ((v - min) / range) * (H - 2 * P)
-    };
-};
+        y: H - P - ((v - min) / range) * (H - 2 * P),
+    }));
+
+    const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const ptStr = pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+    const area = `M${ptStr[0]} L${ptStr.join(' L')} L${(W - P).toFixed(1)} ${H} L${P} ${H} Z`;
+
+    return { line, area, dot: pts[pts.length - 1] };
+});
 </script>
