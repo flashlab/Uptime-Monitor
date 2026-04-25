@@ -137,3 +137,10 @@ INSERT INTO settings (key, value) VALUES ('site_logo_url', '');
 -- ALTER TABLE incidents ADD COLUMN scheduled_start DATETIME;
 -- ALTER TABLE incidents ADD COLUMN scheduled_end DATETIME;
 -- ALTER TABLE incidents ADD COLUMN affected_monitors TEXT;
+
+-- ============================================================
+-- P3 增量迁移（logs 索引；用于日批清理、日聚合、错误率窗口查询）
+-- ============================================================
+-- CREATE INDEX IF NOT EXISTS idx_logs_monitor_id_id ON logs(monitor_id, id);
+-- CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
+-- CREATE INDEX IF NOT EXISTS idx_logs_monitor_created ON logs(monitor_id, created_at);

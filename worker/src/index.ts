@@ -709,13 +709,17 @@ async function aggregateDailyUptime(env: Bindings) {
       total_checks INTEGER DEFAULT 0, successful_checks INTEGER DEFAULT 0,
       avg_latency INTEGER DEFAULT 0, PRIMARY KEY (monitor_id, date)
     )`).run();
+    // 只聚合"昨天"一整天：daily_uptime 主键 (monitor_id, date) + INSERT OR REPLACE 保证幂等；
+    // 用范围谓词替代 date(created_at) 函数包裹，使其可命中 logs(created_at) 索引。
+    const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 3600 * 1000);
     await env.DB.prepare(`
       INSERT OR REPLACE INTO daily_uptime (monitor_id, date, total_checks, successful_checks, avg_latency)
       SELECT monitor_id, date(created_at), COUNT(*), SUM(CASE WHEN is_fail=0 THEN 1 ELSE 0 END),
              COALESCE(CAST(AVG(CASE WHEN is_fail=0 THEN latency END) AS INTEGER), 0)
-      FROM logs WHERE date(created_at) < date('now') AND date(created_at) >= date('now','-90 days')
+      FROM logs WHERE created_at >= ? AND created_at < ?
       GROUP BY monitor_id, date(created_at)
-    `).run();
+    `).bind(yesterdayStart.toISOString(), todayStart.toISOString()).run();
     await env.DB.prepare("DELETE FROM daily_uptime WHERE date < date('now','-90 days')").run();
     console.log('Daily uptime aggregation completed.');
   } catch (e) { console.error('Daily uptime aggregation error:', e); }
@@ -734,13 +738,26 @@ export default {
 };
 
 async function runScheduledTasks(env: Bindings) {
-  const hour = new Date().getUTCHours();
   const tasks: Promise<void>[] = [checkSites(env)];
-  if (hour === 2) {
-    tasks.push(cleanupLogs(env));
-    tasks.push(checkExpiryAlerts(env));
-    tasks.push(aggregateDailyUptime(env));
+
+  // 日批任务：跨天后只跑一次。用 settings.last_daily_run 记录执行日期，
+  // 避免 cron 每分钟触发时在 02:00–02:59 内重复 60 次。
+  const now = new Date();
+  if (now.getUTCHours() >= 2) {
+    const today = now.toISOString().slice(0, 10);
+    try {
+      const row = await env.DB.prepare(
+        "SELECT value FROM settings WHERE key = 'last_daily_run'"
+      ).first<{ value: string }>();
+      if (!row || row.value < today) {
+        await env.DB.prepare(
+          "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('last_daily_run', ?, datetime('now'))"
+        ).bind(today).run();
+        tasks.push(cleanupLogs(env), checkExpiryAlerts(env), aggregateDailyUptime(env));
+      }
+    } catch (e) { console.error('Daily-batch gating failed:', e); }
   }
+
   await Promise.all(tasks);
 }
 
@@ -751,10 +768,24 @@ async function runScheduledTasks(env: Bindings) {
 async function checkSites(env: Bindings) {
   console.log('Starting scheduled check...');
   const now = Date.now();
-  const { results } = await env.DB.prepare('SELECT * FROM monitors').all<Monitor>();
-  const tasks = results.map(async (monitor) => {
+  // 维护窗口列表每次 cron 只查一次，结果传给所有 performCheck，避免每个监控独立 SELECT。
+  const [monitorsRes, maintRes] = await Promise.all([
+    env.DB.prepare('SELECT * FROM monitors').all<Monitor>(),
+    env.DB.prepare(
+      "SELECT affected_monitors FROM incidents WHERE type = 'maintenance' AND status = 'active' " +
+      "AND scheduled_start <= datetime('now') AND scheduled_end >= datetime('now')"
+    ).all<{ affected_monitors: string | null }>(),
+  ]);
+  const maintIds = new Set<string>();
+  for (const row of (maintRes.results ?? [])) {
+    (row.affected_monitors ?? '').split(',').forEach(s => {
+      const v = s.trim(); if (v) maintIds.add(v);
+    });
+  }
+
+  const tasks = monitorsRes.results.map(async (monitor) => {
     if (monitor.paused === 1) return;
-    if (isTimeToCheck(monitor, now)) await performCheck(monitor, env);
+    if (isTimeToCheck(monitor, now)) await performCheck(monitor, env, maintIds);
   });
   await Promise.all(tasks);
 }
@@ -766,7 +797,7 @@ function isTimeToCheck(monitor: Monitor, now: number): boolean {
   return now - lastCheck >= intervalMs;
 }
 
-async function performCheck(monitor: Monitor, env: Bindings) {
+async function performCheck(monitor: Monitor, env: Bindings, maintIds: Set<string> = new Set()) {
   const startTime = Date.now();
   let status = 200;
   let isFail = false;
@@ -849,24 +880,12 @@ async function performCheck(monitor: Monitor, env: Bindings) {
   let newStatus: Monitor['status'] = monitor.status;
   let newRetryCount = monitor.retry_count;
 
-  // 检查是否在计划维护窗口内（如果是，跳过告警）
-  try {
-    const { results: activeMaint } = await env.DB.prepare(
-      "SELECT affected_monitors FROM incidents WHERE type = 'maintenance' AND status = 'active' AND scheduled_start <= datetime('now') AND scheduled_end >= datetime('now')"
-    ).all<{ affected_monitors: string | null }>();
-    if (activeMaint && activeMaint.length > 0) {
-      const inMaintenance = activeMaint.some(m => {
-        if (!m.affected_monitors) return false;
-        return m.affected_monitors.split(',').map(s => s.trim()).includes(String(monitor.id));
-      });
-      if (inMaintenance) {
-        // 在维护窗口内，跳过状态变更告警
-        await env.DB.prepare('UPDATE monitors SET last_check = ?, status = ?, retry_count = ? WHERE id = ?')
-          .bind(new Date().toISOString(), newStatus, newRetryCount, monitor.id).run();
-        return;
-      }
-    }
-  } catch { /* ignore maintenance check errors */ }
+  // 维护窗口判定：maintIds 由上层 checkSites 一次性查出后传入，避免每个监控独立 SELECT。
+  if (maintIds.has(String(monitor.id))) {
+    await env.DB.prepare('UPDATE monitors SET last_check = ?, status = ?, retry_count = ? WHERE id = ?')
+      .bind(new Date().toISOString(), newStatus, newRetryCount, monitor.id).run();
+    return;
+  }
 
   const silenceHoursUptime = monitor.alert_silence_uptime ?? 24;
   const lastAlertUptimeMs = monitor.last_alert_uptime ? new Date(monitor.last_alert_uptime).getTime() : 0;
@@ -941,13 +960,17 @@ async function cleanupLogs(env: Bindings) {
     const { meta: deletedOld } = await env.DB.prepare('DELETE FROM logs WHERE created_at < ?').bind(thirtyDaysAgo).run();
     console.log(`Deleted ${deletedOld.changes} old logs (>30d).`);
 
+    // 每个 monitor 仅保留最新 1000 条：用主键 id 单调递增的事实，先取截断点再范围删除，
+    // 避免原 `id NOT IN (subquery)` 反连接造成的全表扫描。
     const { results } = await env.DB.prepare('SELECT id FROM monitors').all<{ id: number }>();
     for (const monitor of results) {
-      await env.DB.prepare(`
-        DELETE FROM logs WHERE monitor_id = ? AND id NOT IN (
-          SELECT id FROM logs WHERE monitor_id = ? ORDER BY created_at DESC LIMIT 1000
-        )
-      `).bind(monitor.id, monitor.id).run();
+      const cutoff = await env.DB.prepare(
+        'SELECT id FROM logs WHERE monitor_id = ? ORDER BY id DESC LIMIT 1 OFFSET 999'
+      ).bind(monitor.id).first<{ id: number }>();
+      if (cutoff) {
+        await env.DB.prepare('DELETE FROM logs WHERE monitor_id = ? AND id <= ?')
+          .bind(monitor.id, cutoff.id).run();
+      }
     }
     console.log('Log cleanup completed.');
   } catch (e: unknown) { console.error('Log cleanup error:', e); }

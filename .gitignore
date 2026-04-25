@@ -15,6 +15,7 @@ frontend/.env.local
 
 # Local Dev worker config
 worker/wrangler.toml
+*.log
 
 # Frontend build output
 frontend/dist/
@@ -29,6 +30,7 @@ worker/dist/
 # Local-only files
 posts/
 design-system/
+.claude/
 
 # IDE
 .idea/
